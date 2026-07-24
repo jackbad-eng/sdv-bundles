@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bundles">
+<meta name="theme-color" content="#241a12">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Community Center Bundles</title>
+<style>
+  :root{
+    --board:#241a12; --edge:#120c08; --plaque:#f2e2bd; --plaqueEdge:#b99a63;
+    --ink:#3a2a1a; --inkSoft:#7a6449; --slot:#dcc79b; --slotEdge:#b09468; --done:#5d8c2f;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:repeating-linear-gradient(90deg,var(--board) 0 46px,var(--edge) 46px 48px);
+    color:var(--ink); font:16px/1.4 "Trebuchet MS","Gill Sans","Segoe UI",system-ui,sans-serif;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:12px 12px 40px}
+  .plaque{background:var(--plaque);border:4px solid var(--plaqueEdge);box-shadow:0 6px 0 rgba(0,0,0,.35)}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+
+  header.top{padding:14px 14px 10px;margin-bottom:12px}
+  .eyebrow{font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.18em;color:var(--inkSoft)}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:2px 0 0}
+  .score{font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:700;line-height:1}
+  .score span{color:var(--inkSoft)}
+  .headrow{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+
+  nav{display:flex;gap:6px;overflow-x:auto;padding:12px 0 2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{
+    flex:0 0 auto;background:transparent;font:700 13px/1 inherit;color:var(--ink);
+    padding:11px 12px;border:2px solid var(--slotEdge);cursor:pointer;min-height:44px
+  }
+  nav button .n{font-family:ui-monospace,Menlo,monospace;font-weight:400;opacity:.75}
+  nav button[data-full="1"]{color:#fff}
+  nav button.needed{border-style:dashed}
+  nav button[aria-current="true"]{box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+
+  .roomhead{margin:14px 2px 10px}
+  .roomhead h2{margin:0;font-size:21px;font-weight:800;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+  .roomhead p{margin:2px 0 0;font-size:12px;color:#c9b997}
+
+  .grid{display:grid;gap:12px}
+  @media(min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+
+  .bundle{background:var(--plaque);box-shadow:0 5px 0 rgba(0,0,0,.35)}
+  .bhead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;color:#fff;font-weight:800;font-size:15px}
+  .bhead .c{font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:700}
+  .bbody{padding:10px 12px 12px}
+  .sub{font-size:11.5px;color:var(--inkSoft);margin-bottom:8px}
+  .slots{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .slot{
+    text-align:left;background:var(--slot);border:2px solid var(--slotEdge);color:var(--ink);
+    padding:9px 9px;font:inherit;cursor:pointer;min-height:52px;display:block;width:100%
+  }
+  .slot .name{font-size:13px;font-weight:700;line-height:1.2}
+  .slot .qty{font-family:ui-monospace,Menlo,monospace;font-weight:400}
+  .slot .hint{font-size:10.5px;line-height:1.25;margin-top:3px;color:var(--inkSoft)}
+  .slot[aria-pressed="true"]{background:var(--done);border-color:var(--done);color:#fff}
+  .slot[aria-pressed="true"] .hint{color:rgba(255,255,255,.85)}
+  .slot.moot{opacity:.4}
+  .slot:active{transform:scale(.98)}
+
+  .needwrap{padding:14px}
+  .needwrap h2{margin:0 0 10px;font-size:19px;font-weight:800}
+  .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .filters button{
+    background:transparent;border:2px solid var(--slotEdge);color:var(--ink);
+    font:700 12px/1 inherit;padding:10px 11px;cursor:pointer;min-height:40px
+  }
+  .filters button[aria-pressed="true"]{background:var(--ink);color:var(--plaque)}
+  .need{padding-left:10px;margin-bottom:12px}
+  .need .t{font-size:14px;font-weight:700}
+  .need .m{font-size:11px;color:var(--inkSoft);font-weight:400}
+  .need .items{font-size:13.5px;margin-top:2px}
+  .need .items i{font-style:normal;color:var(--inkSoft)}
+
+  footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px}
+  footer small{color:#8a7a62;font-size:11px;max-width:60%}
+  footer button{background:transparent;border:2px solid #8a7a62;color:#c9b997;font:inherit;font-size:12px;padding:10px 12px;cursor:pointer;min-height:44px}
+  button:focus-visible{outline:3px solid #ffe9a8;outline-offset:2px}
+  @media(prefers-reduced-motion:reduce){.slot:active{transform:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top plaque">
+    <div class="headrow">
+      <div>
+        <div class="eyebrow">PELICAN TOWN</div>
+        <h1>Community Center</h1>
+      </div>
+      <div style="text-align:right">
+        <div class="score" id="score"></div>
+        <div style="font-size:12px;color:var(--inkSoft)">bundles completed</div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    <small id="note">Standard bundles (not Remixed). Progress saves automatically.</small>
+    <button id="reset">Start a new save</button>
+  </footer>
+</div>
+
+<script>
+const SEASONS=["spring","summer","fall","winter"];
+const ROOMS=[
+{id:"crafts",name:"Crafts Room",unlocks:"Repairs the bridge to the Quarry",color:"#7ba428",bundles:[
+ {id:"spring-forage",name:"Spring Foraging",need:4,reward:"30 Spring Seeds",items:[
+  {n:"Wild Horseradish",s:["spring"]},{n:"Daffodil",s:["spring"]},{n:"Leek",s:["spring"]},{n:"Dandelion",s:["spring"]}]},
+ {id:"summer-forage",name:"Summer Foraging",need:3,reward:"30 Summer Seeds",items:[
+  {n:"Grape",s:["summer"],h:"Forage, not the crop"},{n:"Spice Berry",s:["summer"]},{n:"Sweet Pea",s:["summer"]}]},
+ {id:"fall-forage",name:"Fall Foraging",need:4,reward:"30 Fall Seeds",items:[
+  {n:"Common Mushroom",s:["fall"],h:"Also Secret Woods in spring"},{n:"Wild Plum",s:["fall"]},{n:"Hazelnut",s:["fall"]},{n:"Blackberry",s:["fall"],h:"Fall 8–11 only"}]},
+ {id:"winter-forage",name:"Winter Foraging",need:4,reward:"30 Winter Seeds",items:[
+  {n:"Winter Root",s:["winter"],h:"Dig artifact spots"},{n:"Crystal Fruit",s:["winter"]},{n:"Snow Yam",s:["winter"],h:"Dig artifact spots"},{n:"Crocus",s:["winter"]}]},
+ {id:"construction",name:"Construction",need:4,reward:"Charcoal Kiln",items:[
+  {n:"Wood",q:99},{n:"Wood",q:99},{n:"Stone",q:99},{n:"Hardwood",q:10,h:"Large stumps / Secret Woods"}]},
+ {id:"exotic-forage",name:"Exotic Foraging",need:5,reward:"5 Autumn's Bounty",items:[
+  {n:"Coconut",h:"Desert"},{n:"Cactus Fruit",h:"Desert"},{n:"Cave Carrot",h:"Mines, break barrels"},{n:"Red Mushroom",h:"Mines / Secret Woods"},
+  {n:"Purple Mushroom",h:"Mines floor 80+"},{n:"Maple Syrup",h:"Tapper on maple"},{n:"Oak Resin",h:"Tapper on oak"},{n:"Pine Tar",h:"Tapper on pine"},
+  {n:"Morel",s:["spring"],h:"Secret Woods"}]}]},
+{id:"pantry",name:"Pantry",unlocks:"Builds the Greenhouse",color:"#d99b2b",bundles:[
+ {id:"spring-crops",name:"Spring Crops",need:4,reward:"20 Speed-Gro",items:[
+  {n:"Parsnip",s:["spring"]},{n:"Green Bean",s:["spring"]},{n:"Cauliflower",s:["spring"]},{n:"Potato",s:["spring"]}]},
+ {id:"summer-crops",name:"Summer Crops",need:4,reward:"Quality Sprinkler",items:[
+  {n:"Tomato",s:["summer"]},{n:"Hot Pepper",s:["summer"]},{n:"Blueberry",s:["summer"]},{n:"Melon",s:["summer"]}]},
+ {id:"fall-crops",name:"Fall Crops",need:4,reward:"Bee House",items:[
+  {n:"Corn",s:["summer","fall"]},{n:"Eggplant",s:["fall"]},{n:"Pumpkin",s:["fall"]},{n:"Yam",s:["fall"]}]},
+ {id:"quality-crops",name:"Quality Crops",need:3,reward:"3 Preserves Jars",note:"Gold quality only",items:[
+  {n:"Parsnip",q:5,s:["spring"],h:"Gold"},{n:"Melon",q:5,s:["summer"],h:"Gold"},{n:"Pumpkin",q:5,s:["fall"],h:"Gold"},{n:"Corn",q:5,s:["summer","fall"],h:"Gold"}]},
+ {id:"animal",name:"Animal",need:5,reward:"Cheese Press",items:[
+  {n:"Large Milk"},{n:"Large Brown Egg"},{n:"Large Egg",h:"White"},{n:"Large Goat Milk"},{n:"Wool",h:"Sheep or rabbit"},{n:"Duck Egg"}]},
+ {id:"artisan",name:"Artisan",need:6,reward:"Keg",items:[
+  {n:"Truffle Oil"},{n:"Cloth"},{n:"Goat Cheese"},{n:"Cheese"},{n:"Honey"},{n:"Jelly"},
+  {n:"Apple",h:"Fruit tree, fall"},{n:"Apricot",h:"Fruit tree, spring"},{n:"Orange",h:"Fruit tree, summer"},
+  {n:"Peach",h:"Fruit tree, summer"},{n:"Pomegranate",h:"Fruit tree, fall"},{n:"Cherry",h:"Fruit tree, spring"}]}]},
+{id:"fishtank",name:"Fish Tank",unlocks:"Clears the glittering boulder — panning",color:"#3d8fbf",bundles:[
+ {id:"river-fish",name:"River Fish",need:4,reward:"30 Bait",items:[
+  {n:"Sunfish",s:["spring","summer"],h:"River, 6am–7pm, sunny"},{n:"Catfish",s:["spring","fall"],h:"River, rainy"},
+  {n:"Shad",s:["spring","summer","fall"],h:"River, rainy, 9am–2am"},{n:"Tiger Trout",s:["fall","winter"],h:"River, 6am–7pm"}]},
+ {id:"lake-fish",name:"Lake Fish",need:4,reward:"Dressed Spinner",items:[
+  {n:"Largemouth Bass",h:"Mountain lake, 6am–7pm"},{n:"Carp",h:"Mountain lake / sewers"},{n:"Bullhead",h:"Mountain lake"},
+  {n:"Sturgeon",s:["summer","winter"],h:"Mountain lake, 6am–7pm"}]},
+ {id:"ocean-fish",name:"Ocean Fish",need:4,reward:"5 Warp Totem: Beach",items:[
+  {n:"Sardine",s:["spring","fall","winter"],h:"Ocean, 6am–7pm"},{n:"Tuna",s:["summer","winter"],h:"Ocean, 6am–7pm"},
+  {n:"Red Snapper",s:["summer","fall"],h:"Ocean, rainy"},{n:"Tilapia",s:["summer","fall"],h:"Ocean, 6am–2pm"}]},
+ {id:"night-fish",name:"Night Fishing",need:3,reward:"Small Glow Ring",items:[
+  {n:"Walleye",s:["fall"],h:"Rainy, 12pm–2am"},{n:"Bream",h:"River, 6pm–2am"},{n:"Eel",s:["spring","fall"],h:"Ocean, rainy, 4pm–2am"}]},
+ {id:"crab-pot",name:"Crab Pot",need:5,reward:"3 Crab Pots",items:[
+  {n:"Lobster"},{n:"Crayfish"},{n:"Crab"},{n:"Cockle"},{n:"Mussel"},{n:"Shrimp"},{n:"Snail"},{n:"Periwinkle"},{n:"Oyster"},{n:"Clam"}]},
+ {id:"specialty-fish",name:"Specialty Fish",need:4,reward:"5 Dish O' The Sea",items:[
+  {n:"Pufferfish",s:["summer"],h:"Ocean, sunny, 12pm–4pm"},{n:"Ghostfish",h:"Mines floor 20 & 60"},
+  {n:"Sandfish",h:"Desert pond, 6am–8pm"},{n:"Woodskip",h:"Secret Woods pond"}]}]},
+{id:"boiler",name:"Boiler Room",unlocks:"Repairs the Minecarts",color:"#c4552e",bundles:[
+ {id:"blacksmith",name:"Blacksmith's",need:3,reward:"Furnace",items:[{n:"Copper Bar"},{n:"Iron Bar"},{n:"Gold Bar"}]},
+ {id:"geologist",name:"Geologist's",need:4,reward:"5 Omni Geodes",items:[
+  {n:"Quartz",h:"Mines"},{n:"Earth Crystal",h:"Mines 1–39"},{n:"Frozen Tear",h:"Mines 40–79"},{n:"Fire Quartz",h:"Mines 80–119"}]},
+ {id:"adventurer",name:"Adventurer's",need:2,reward:"Small Magnet Ring",items:[
+  {n:"Slime",q:99},{n:"Bat Wing",q:10},{n:"Solar Essence"},{n:"Void Essence",h:"Mines 80+"}]}]},
+{id:"bulletin",name:"Bulletin Board",unlocks:"+1 heart with every villager",color:"#8a63c4",bundles:[
+ {id:"chefs",name:"Chef's",need:6,reward:"3 Pink Cake",items:[
+  {n:"Maple Syrup",h:"Tapper on maple"},{n:"Fiddlehead Fern",s:["summer"],h:"Secret Woods"},{n:"Truffle",h:"Pigs, outdoors"},
+  {n:"Poppy",s:["summer"]},{n:"Maki Roll",h:"Cook or buy at Saloon"},{n:"Fried Egg",h:"Cook"}]},
+ {id:"dye",name:"Dye",need:6,reward:"Seed Maker",items:[
+  {n:"Red Mushroom",h:"Mines / Secret Woods"},{n:"Sea Urchin",h:"Beach tide pools"},{n:"Sunflower",s:["summer","fall"]},
+  {n:"Duck Feather"},{n:"Aquamarine",h:"Mines 40–79"},{n:"Red Cabbage",s:["summer"],h:"Seeds sold year 2"}]},
+ {id:"field-research",name:"Field Research",need:4,reward:"Recycling Machine",items:[
+  {n:"Purple Mushroom",h:"Mines floor 80+"},{n:"Nautilus Shell",s:["winter"],h:"Beach"},{n:"Chub",h:"River / mountain lake"},{n:"Frozen Geode",h:"Mines 40–79"}]},
+ {id:"fodder",name:"Fodder",need:3,reward:"Heater",items:[
+  {n:"Wheat",q:10,s:["summer","fall"]},{n:"Hay",q:10},{n:"Apple",q:3,h:"Fruit tree, fall"}]},
+ {id:"enchanters",name:"Enchanter's",need:4,reward:"5 Gold Bars",items:[
+  {n:"Oil",h:"Oil Maker or Pierre's"},{n:"Wine"},{n:"Rabbit's Foot",h:"Rabbits, high hearts"},{n:"Pomegranate",h:"Fruit tree, fall"}]}]},
+{id:"vault",name:"Vault",unlocks:"Repairs the Bus — Calico Desert",color:"#c9a227",bundles:[
+ {id:"v1",name:"2,500g",need:1,items:[{n:"2,500g"}]},
+ {id:"v2",name:"5,000g",need:1,items:[{n:"5,000g"}]},
+ {id:"v3",name:"10,000g",need:1,items:[{n:"10,000g"}]},
+ {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g"}]}]}
+];
+
+const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
+const K=(b,i)=>b+"#"+i;
+const KEY="cc-progress-v1";
+
+let checked=new Set(), tab="crafts", season="all";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function load(){
+  try{ if(window.storage){ const r=await window.storage.get(KEY); if(r&&r.value) return new Set(JSON.parse(r.value)); } }catch(e){}
+  try{ const v=localStorage.getItem(KEY); if(v) return new Set(JSON.parse(v)); }catch(e){}
+  return new Set();
+}
+async function save(){
+  const s=JSON.stringify([...checked]); let ok=false;
+  try{ if(window.storage){ await window.storage.set(KEY,s); ok=true; } }catch(e){}
+  try{ localStorage.setItem(KEY,s); ok=true; }catch(e){}
+  if(!ok) document.getElementById("note").textContent="Saving is unavailable — progress will reset when you close this.";
+}
+
+const stat=b=>{const have=b.items.filter((_,i)=>checked.has(K(b.id,i))).length;return{have,done:have>=b.need};};
+const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(b=>stat(b).done).length,total:bs.length};};
+
+function renderNav(){
+  const total=ALL.filter(b=>stat(b).done).length;
+  document.getElementById("score").innerHTML=total+'<span>/'+ALL.length+'</span>';
+  document.getElementById("nav").innerHTML=ROOMS.map(r=>{
+    const p=roomProg(r.id),full=p.done===p.total;
+    return '<button data-tab="'+r.id+'" data-full="'+(full?1:0)+'" aria-current="'+(tab===r.id)+'" style="border-color:'+r.color+';background:'+(full?r.color:"transparent")+'">'+
+      r.name+' <span class="n">'+p.done+'/'+p.total+'</span></button>';
+  }).join("")+'<button class="needed" data-tab="needed" aria-current="'+(tab==="needed")+'" style="background:'+(tab==="needed"?"var(--ink)":"transparent")+';color:'+(tab==="needed"?"var(--plaque)":"var(--ink)")+'">Still needed</button>';
+}
+
+function bundleCard(b,color){
+  const st=stat(b), short=Math.max(0,b.need-st.have), partial=b.need<b.items.length;
+  const sub=st.done?(b.reward?"Reward: "+b.reward:"Complete")
+    :(partial?"Any "+short+" more of these "+b.items.length:short+" to go")+(b.note?" · "+b.note:"");
+  const slots=b.items.map((it,i)=>{
+    const id=K(b.id,i),on=checked.has(id);
+    return '<button class="slot'+(st.done&&!on?" moot":"")+'" data-id="'+id+'" aria-pressed="'+on+'">'+
+      '<span class="name">'+(on?"✓ ":"")+esc(it.n)+(it.q?'<span class="qty"> ×'+it.q+'</span>':"")+'</span>'+
+      (it.h?'<span class="hint">'+esc(it.h)+'</span>':"")+'</button>';
+  }).join("");
+  return '<div class="bundle" style="border:4px solid '+(st.done?"var(--done)":color)+'">'+
+    '<div class="bhead" style="background:'+(st.done?"var(--done)":color)+'"><span>'+(st.done?"✓ ":"")+esc(b.name)+'</span>'+
+    '<span class="c">'+Math.min(st.have,b.need)+'/'+b.need+'</span></div>'+
+    '<div class="bbody"><div class="sub">'+esc(sub)+'</div><div class="slots">'+slots+'</div></div></div>';
+}
+
+function renderNeeded(){
+  const filters=[["all","Everything"]].concat(SEASONS.map(s=>[s,s[0].toUpperCase()+s.slice(1)]),[["any","Year-round"]]);
+  const rows=[];
+  for(const b of ALL){
+    const st=stat(b); if(st.done) continue;
+    const items=b.items.map((it,i)=>({...it,id:K(b.id,i)})).filter(it=>!checked.has(it.id))
+      .filter(it=>season==="all"||(season==="any"?!it.s:(it.s||[]).includes(season)));
+    if(items.length) rows.push({b,items,short:b.need-st.have});
+  }
+  const allDone=ALL.every(b=>stat(b).done);
+  return '<section class="plaque needwrap"><h2>What\'s still missing</h2><div class="filters">'+
+    filters.map(f=>'<button data-season="'+f[0]+'" aria-pressed="'+(season===f[0])+'">'+f[1]+'</button>').join("")+'</div>'+
+    (rows.length?rows.map(r=>'<div class="need" style="border-left:4px solid '+r.b.color+'">'+
+      '<div class="t">'+esc(r.b.name)+' <span class="m">'+esc(r.b.roomName)+' · need '+r.short+' more</span></div>'+
+      '<div class="items">'+r.items.map(it=>esc(it.n)+(it.q?'<span class="qty"> ×'+it.q+'</span>':"")).join('<i> · </i>')+'</div></div>').join("")
+     :'<p>'+(allDone?"Every bundle is complete. The Junimos are done here.":"Nothing left for this season — switch the filter to see the rest.")+'</p>')+
+    '</section>';
+}
+
+function render(){
+  renderNav();
+  const main=document.getElementById("main");
+  if(tab==="needed"){ main.innerHTML=renderNeeded(); return; }
+  const r=ROOMS.find(x=>x.id===tab);
+  main.innerHTML='<div class="roomhead"><h2 style="color:'+r.color+'">'+esc(r.name)+'</h2><p>'+esc(r.unlocks)+'</p></div>'+
+    '<div class="grid">'+r.bundles.map(b=>bundleCard(b,r.color)).join("")+'</div>';
+}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.tab){ tab=t.dataset.tab; render(); window.scrollTo(0,0); return; }
+  if(t.dataset.season){ season=t.dataset.season; render(); return; }
+  if(t.dataset.id){ checked.has(t.dataset.id)?checked.delete(t.dataset.id):checked.add(t.dataset.id); save(); render(); return; }
+  if(t.id==="reset"&&confirm("Clear every check and start a new save?")){ checked=new Set(); save(); render(); }
+});
+
+load().then(s=>{checked=s;render();});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+}
+</script>
+</body>
+</html>
