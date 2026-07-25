@@ -206,7 +206,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25a";
+const BUILD="2026-07-25b";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -457,8 +457,24 @@ if(navigator.storage&&navigator.storage.persisted)
 
 load().then(s=>{checked=s;render();});
 
+// Keep the installed app from getting stuck on an old build: check for a new
+// service worker on every launch, and reload once when it takes over.
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloaded) return;   // fresh install shouldn't bounce
+    reloaded = true;
+    location.reload();
+  });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      const poke = () => { try { reg.update(); } catch (e) {} };
+      poke();
+      setInterval(poke, 60 * 60 * 1000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) poke(); });
+    }).catch(() => {});
+  });
 }
 </script>
 </body>
