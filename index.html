@@ -107,6 +107,8 @@
   .ok{color:#3d6b1a;font-weight:700}
   .bad{color:#8c2f2f;font-weight:700}
   .danger button{border-color:#8c2f2f;color:#8c2f2f}
+  .panel input[type=search]{width:100%;font:inherit;font-size:14px;padding:10px;margin:6px 0 12px;
+    border:2px solid var(--slotEdge);background:var(--slot);color:var(--ink);-webkit-appearance:none}
   .urg-ready{background:rgba(93,140,47,.16)}
   .urg-plant{background:rgba(201,162,39,.18)}
   .urg-leaving{background:rgba(196,85,46,.14)}
@@ -213,7 +215,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25f";
+const BUILD="2026-07-25g";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -407,6 +409,22 @@ function parseOwned(text){
   return tally;
 }
 
+// Full inventory listing, for browsing/search. Independent of bundle matching.
+function parseInv(text){
+  const a=text.indexOf("<inv>"); if(a<0) return null;
+  const blk=text.slice(a,text.indexOf("</inv>",a));
+  const re=/<i ([^>]*?)\/>/g, rows=[]; let m;
+  const attr=(s,k)=>{ const x=new RegExp(k+'="([^"]*)"').exec(s); return x?x[1]:""; };
+  const un=s=>s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
+  while((m=re.exec(blk))){
+    const a2=m[1];
+    rows.push({n:un(attr(a2,"n")),id:attr(a2,"id"),q:+attr(a2,"q")||0,
+               s:+attr(a2,"s")||1,w:un(attr(a2,"w")),
+               big:attr(a2,"b")==="1",type:attr(a2,"t")||"Object"});
+  }
+  return rows;
+}
+
 // Per-slot owned count, honouring each slot's minimum quality (gold >= silver).
 function ownedForSlots(tally){
   const out={};
@@ -526,11 +544,12 @@ function parseSave(text){
   }
 
   const owned=ownedForSlots(parseOwned(text));
+  const inv=parseInv(text);
 
   return {v:1,at:Date.now(),src:"file",
           date:{season:season,day:+day,year:+year},
           money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
-          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,
+          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,
           ownedCount:Object.keys(owned).length,
           verify:verifyIds(byName)};
 }
@@ -555,7 +574,7 @@ async function refreshFromUrl(){
   const r=parseSave(text);
   SAVE={v:1,at:Date.now(),src:"url",date:r.date,money:r.money,farm:r.farm,
         donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok,
-        areas:r.areas,owned:r.owned};
+        areas:r.areas,owned:r.owned,inv:r.inv};
   persistSave();
   return SAVE;
 }
@@ -566,7 +585,7 @@ function persistSave(){
       const o={v:SAVE.v,at:SAVE.at,src:SAVE.src,date:SAVE.date,money:SAVE.money,
                farm:SAVE.farm,donatedBundles:SAVE.donatedBundles,
                verified:SAVE.verified,donated:[...SAVE.donated],
-               areas:SAVE.areas||null,owned:SAVE.owned||{}};
+               areas:SAVE.areas||null,owned:SAVE.owned||{},inv:SAVE.inv||null};
       localStorage.setItem(SKEY,JSON.stringify(o));
     } else localStorage.removeItem(SKEY);
   }catch(e){}
@@ -674,6 +693,9 @@ function renderNav(){
     '<button class="needed" data-tab="now" aria-current="'+(tab==="now")+'" style="background:'+
       (tab==="now"?"var(--ink)":"transparent")+';color:'+(tab==="now"?"var(--plaque)":"var(--ink)")+
       ';border-color:#c9a227">Right now'+(nowN?' <span class="n">'+nowN+'</span>':'')+'</button>'+
+    (SAVE&&SAVE.inv?'<button class="needed" data-tab="inv" aria-current="'+(tab==="inv")+'" style="background:'+
+      (tab==="inv"?"var(--ink)":"transparent")+';color:'+(tab==="inv"?"var(--plaque)":"var(--ink)")+
+      '">What I own</button>':'')+
     ROOMS.map(r=>{
     const p=roomProg(r.id),full=p.done===p.total;
     return '<button data-tab="'+r.id+'" data-full="'+(full?1:0)+'" aria-current="'+(tab===r.id)+'" style="border-color:'+r.color+';background:'+(full?r.color:"transparent")+'">'+
@@ -747,6 +769,67 @@ function renderNow(){
   if(rest) html+='<h3>Not yet</h3><p>'+rest+' more slot'+(rest===1?"":"s")+
     ' are out of season or have no deadline — see Still needed.</p>';
   return html+'</section>';
+}
+
+let invQ="";
+// Which bundles (if any) still want this item id.
+function wantedBy(id){
+  const out=[];
+  ALL.forEach(b=>{
+    if(stat(b).done) return;
+    b.items.forEach((it,i)=>{
+      if(String(it.id)!==String(id)) return;
+      if(isOn(K(b.id,i))) return;
+      out.push(b.name);
+    });
+  });
+  return out;
+}
+
+function invRows(){
+  if(!SAVE||!SAVE.inv) return null;
+  const q=invQ.trim().toLowerCase();
+  const rows=SAVE.inv.filter(r=>!q||r.n.toLowerCase().indexOf(q)>=0);
+  // fold identical name+quality+container into one line
+  const seen={},out=[];
+  rows.forEach(r=>{
+    const k=r.n+"|"+r.q+"|"+r.w;
+    if(seen[k]){ seen[k].s+=r.s; return; }
+    seen[k]={...r}; out.push(seen[k]);
+  });
+  return out.sort((a,b)=>a.n.localeCompare(b.n)||a.w.localeCompare(b.w));
+}
+
+const QNAME={0:"",1:"silver",2:"gold",4:"iridium"};
+
+function renderInv(){
+  if(!SAVE) return '<section class="plaque panel"><h2>What I own</h2>'+
+    '<p>Link your save to search everything in your backpack and chests.</p>'+
+    '<button data-act="importsave">Import a save</button></section>';
+  if(!SAVE.inv) return '<section class="plaque panel"><h2>What I own</h2>'+
+    '<p>This save was linked before inventory was included. Tap <b>Refresh save</b> '+
+    'to pull it in.</p><button data-act="refresh">Refresh save</button></section>';
+
+  const rows=invRows();
+  const total=SAVE.inv.reduce((a,r)=>a+r.s,0);
+  return '<section class="plaque panel"><h2>What I own</h2>'+
+    '<p class="kv">'+SAVE.inv.length+' stacks · '+total+' items · as of '+esc(fmtDate(SAVE.date))+'</p>'+
+    '<input id="invq" type="search" placeholder="Search your backpack and chests" value="'+esc(invQ)+'">'+
+    '<div id="invlist">'+invListHtml(rows)+'</div></section>';
+}
+
+function invListHtml(rows){
+  if(!rows.length) return '<p>Nothing matching.</p>';
+  return rows.slice(0,300).map(r=>{
+    const want=wantedBy(r.id);
+    return '<div class="need'+(want.length?' urg-ready':'')+'" style="border-left:4px solid '+
+      (want.length?"#5d8c2f":"#b09468")+'">'+
+      '<div class="t">'+esc(r.n)+(r.s>1?'<span class="qty"> ×'+r.s+'</span>':"")+
+        (QNAME[r.q]?' <span class="m">'+QNAME[r.q]+'</span>':"")+
+        ' <span class="m">'+esc(r.w)+'</span></div>'+
+      (want.length?'<div class="items"><i>still wanted by '+esc(want.join(", "))+' — don\'t sell</i></div>':"")+
+      '</div>';
+  }).join("")+(rows.length>300?'<p>…and '+(rows.length-300)+' more. Narrow the search.</p>':"");
 }
 
 function renderNeeded(){
@@ -882,6 +965,7 @@ function render(){
   renderNav();
   const main=document.getElementById("main");
   if(tab==="now"){ main.innerHTML=renderNow(); renderStatus(); return; }
+  if(tab==="inv"){ main.innerHTML=renderInv(); renderStatus(); return; }
   if(tab==="import"){ main.innerHTML=renderImport(); renderStatus(); return; }
   if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
   if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
@@ -899,10 +983,10 @@ const ACTIONS={
     const r=pendingImport;
     SAVE={v:1,at:r.at,src:r.src,date:r.date,money:r.money,farm:r.farm,
           donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok,
-          areas:r.areas,owned:r.owned};
+          areas:r.areas,owned:r.owned,inv:r.inv};
     pendingImport=null;
     persistSave();
-    tab="crafts"; render(); window.scrollTo(0,0);
+    tab="now"; render(); window.scrollTo(0,0);
     flash("Imported "+fmtDate(SAVE.date)+" · "+SAVE.donatedBundles+" bundles already donated.");
   },
   unlink(){
@@ -991,6 +1075,15 @@ document.addEventListener("click",e=>{
 
 document.addEventListener("change",e=>{
   if(e.target&&e.target.id==="savefile") handleFile(e.target.files&&e.target.files[0]);
+});
+
+// Re-render only the results; a full render() would blow away focus on each key.
+document.addEventListener("input",e=>{
+  if(e.target&&e.target.id==="invq"){
+    invQ=e.target.value;
+    const list=document.getElementById("invlist");
+    if(list) list.innerHTML=invListHtml(invRows());
+  }
 });
 
 if(navigator.storage&&navigator.storage.persisted)
