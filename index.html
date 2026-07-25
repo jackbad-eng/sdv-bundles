@@ -107,6 +107,10 @@
   .ok{color:#3d6b1a;font-weight:700}
   .bad{color:#8c2f2f;font-weight:700}
   .danger button{border-color:#8c2f2f;color:#8c2f2f}
+  .urg-ready{background:rgba(93,140,47,.16)}
+  .urg-plant{background:rgba(201,162,39,.18)}
+  .urg-leaving{background:rgba(196,85,46,.14)}
+  .need.urg-ready,.need.urg-plant,.need.urg-leaving{padding:8px 10px;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -153,19 +157,19 @@ const ROOMS=[
   {n:"Morel",id:257,s:["spring"],h:"Secret Woods"}]}]},
 {id:"pantry",name:"Pantry",unlocks:"Builds the Greenhouse",color:"#d99b2b",bundles:[
  {id:"spring-crops",name:"Spring Crops",need:4,reward:"20 Speed-Gro",items:[
-  {n:"Parsnip",id:24,s:["spring"]},{n:"Green Bean",id:188,s:["spring"]},{n:"Cauliflower",id:190,s:["spring"]},{n:"Potato",id:192,s:["spring"]}]},
+  {n:"Parsnip",g:4,id:24,s:["spring"]},{n:"Green Bean",g:10,id:188,s:["spring"]},{n:"Cauliflower",g:12,id:190,s:["spring"]},{n:"Potato",g:6,id:192,s:["spring"]}]},
  {id:"summer-crops",name:"Summer Crops",need:4,reward:"Quality Sprinkler",items:[
-  {n:"Tomato",id:256,s:["summer"]},{n:"Hot Pepper",id:260,s:["summer"]},{n:"Blueberry",id:258,s:["summer"]},{n:"Melon",id:254,s:["summer"]}]},
+  {n:"Tomato",g:11,id:256,s:["summer"]},{n:"Hot Pepper",g:5,id:260,s:["summer"]},{n:"Blueberry",g:13,id:258,s:["summer"]},{n:"Melon",g:12,id:254,s:["summer"]}]},
  {id:"fall-crops",name:"Fall Crops",need:4,reward:"Bee House",items:[
-  {n:"Corn",id:270,s:["summer","fall"]},{n:"Eggplant",id:272,s:["fall"]},{n:"Pumpkin",id:276,s:["fall"]},{n:"Yam",id:280,s:["fall"]}]},
+  {n:"Corn",g:14,id:270,s:["summer","fall"]},{n:"Eggplant",g:5,id:272,s:["fall"]},{n:"Pumpkin",g:13,id:276,s:["fall"]},{n:"Yam",g:10,id:280,s:["fall"]}]},
  {id:"quality-crops",name:"Quality Crops",need:3,reward:"3 Preserves Jars",note:"Gold quality only",items:[
-  {n:"Parsnip",id:24,mq:2,q:5,s:["spring"],h:"Gold"},{n:"Melon",id:254,mq:2,q:5,s:["summer"],h:"Gold"},{n:"Pumpkin",id:276,mq:2,q:5,s:["fall"],h:"Gold"},{n:"Corn",id:270,mq:2,q:5,s:["summer","fall"],h:"Gold"}]},
+  {n:"Parsnip",g:4,id:24,mq:2,q:5,s:["spring"],h:"Gold"},{n:"Melon",g:12,id:254,mq:2,q:5,s:["summer"],h:"Gold"},{n:"Pumpkin",g:13,id:276,mq:2,q:5,s:["fall"],h:"Gold"},{n:"Corn",g:14,id:270,mq:2,q:5,s:["summer","fall"],h:"Gold"}]},
  {id:"animal",name:"Animal",need:5,reward:"Cheese Press",items:[
   {n:"Large Milk",id:186},{n:"Large Brown Egg",id:182},{n:"Large Egg",id:174,h:"White"},{n:"Large Goat Milk",id:438},{n:"Wool",id:440,h:"Sheep or rabbit"},{n:"Duck Egg",id:442}]},
  {id:"artisan",name:"Artisan",need:6,reward:"Keg",items:[
   {n:"Truffle Oil",id:432},{n:"Cloth",id:428},{n:"Goat Cheese",id:426},{n:"Cheese",id:424},{n:"Honey",id:340},{n:"Jelly",id:344},
-  {n:"Apple",id:613,h:"Fruit tree, fall"},{n:"Apricot",id:634,h:"Fruit tree, spring"},{n:"Orange",id:635,h:"Fruit tree, summer"},
-  {n:"Peach",id:636,h:"Fruit tree, summer"},{n:"Pomegranate",id:637,h:"Fruit tree, fall"},{n:"Cherry",id:638,h:"Fruit tree, spring"}]}]},
+  {n:"Apple",tree:"fall",id:613,h:"Fruit tree, fall"},{n:"Apricot",tree:"spring",id:634,h:"Fruit tree, spring"},{n:"Orange",tree:"summer",id:635,h:"Fruit tree, summer"},
+  {n:"Peach",tree:"summer",id:636,h:"Fruit tree, summer"},{n:"Pomegranate",tree:"fall",id:637,h:"Fruit tree, fall"},{n:"Cherry",tree:"spring",id:638,h:"Fruit tree, spring"}]}]},
 {id:"fishtank",name:"Fish Tank",unlocks:"Clears the glittering boulder — panning",color:"#3d8fbf",bundles:[
  {id:"river-fish",name:"River Fish",need:4,reward:"30 Bait",items:[
   {n:"Sunfish",id:145,s:["spring","summer"],h:"River, 6am–7pm, sunny"},{n:"Catfish",id:143,s:["spring","fall"],h:"River, rainy"},
@@ -192,16 +196,16 @@ const ROOMS=[
 {id:"bulletin",name:"Bulletin Board",unlocks:"+1 heart with every villager",color:"#8a63c4",bundles:[
  {id:"chefs",name:"Chef's",need:6,reward:"3 Pink Cake",items:[
   {n:"Maple Syrup",id:724,h:"Tapper on maple"},{n:"Fiddlehead Fern",id:259,s:["summer"],h:"Secret Woods"},{n:"Truffle",id:430,h:"Pigs, outdoors"},
-  {n:"Poppy",id:376,s:["summer"]},{n:"Maki Roll",id:228,h:"Cook or buy at Saloon"},{n:"Fried Egg",id:194,h:"Cook"}]},
+  {n:"Poppy",g:7,id:376,s:["summer"]},{n:"Maki Roll",id:228,h:"Cook or buy at Saloon"},{n:"Fried Egg",id:194,h:"Cook"}]},
  {id:"dye",name:"Dye",need:6,reward:"Seed Maker",items:[
-  {n:"Red Mushroom",id:420,h:"Mines / Secret Woods"},{n:"Sea Urchin",id:397,h:"Beach tide pools"},{n:"Sunflower",id:421,s:["summer","fall"]},
-  {n:"Duck Feather",id:444},{n:"Aquamarine",id:62,h:"Mines 40–79"},{n:"Red Cabbage",id:266,s:["summer"],h:"Seeds sold year 2"}]},
+  {n:"Red Mushroom",id:420,h:"Mines / Secret Woods"},{n:"Sea Urchin",id:397,h:"Beach tide pools"},{n:"Sunflower",g:8,id:421,s:["summer","fall"]},
+  {n:"Duck Feather",id:444},{n:"Aquamarine",id:62,h:"Mines 40–79"},{n:"Red Cabbage",g:9,id:266,s:["summer"],h:"Seeds sold year 2"}]},
  {id:"field-research",name:"Field Research",need:4,reward:"Recycling Machine",items:[
   {n:"Purple Mushroom",id:422,h:"Mines floor 80+"},{n:"Nautilus Shell",id:392,s:["winter"],h:"Beach"},{n:"Chub",id:702,h:"River / mountain lake"},{n:"Frozen Geode",id:536,h:"Mines 40–79"}]},
  {id:"fodder",name:"Fodder",need:3,reward:"Heater",items:[
-  {n:"Wheat",id:262,q:10,s:["summer","fall"]},{n:"Hay",id:178,q:10},{n:"Apple",id:613,q:3,h:"Fruit tree, fall"}]},
+  {n:"Wheat",g:4,id:262,q:10,s:["summer","fall"]},{n:"Hay",id:178,q:10},{n:"Apple",tree:"fall",id:613,q:3,h:"Fruit tree, fall"}]},
  {id:"enchanters",name:"Enchanter's",need:4,reward:"5 Gold Bars",items:[
-  {n:"Oak Resin",id:725,h:"Tapper on oak"},{n:"Wine",id:348,h:"Keg, 7 days"},{n:"Rabbit's Foot",id:446,h:"Rabbits, high hearts"},{n:"Pomegranate",id:637,h:"Fruit tree, fall"}]}]},
+  {n:"Oak Resin",id:725,h:"Tapper on oak"},{n:"Wine",id:348,h:"Keg, 7 days"},{n:"Rabbit's Foot",id:446,h:"Rabbits, high hearts"},{n:"Pomegranate",tree:"fall",id:637,h:"Fruit tree, fall"}]}]},
 {id:"vault",name:"Vault",unlocks:"Repairs the Bus — Calico Desert",color:"#c9a227",bundles:[
  {id:"v1",name:"2,500g",need:1,items:[{n:"2,500g",gold:2500}]},
  {id:"v2",name:"5,000g",need:1,items:[{n:"5,000g",gold:5000}]},
@@ -209,7 +213,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25e";
+const BUILD="2026-07-25f";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -359,6 +363,64 @@ function scalar(text,tag){
   const b=text.indexOf("</"+tag+">",a); if(b<0) return null;
   return text.slice(a+tag.length+2,b);
 }
+/* Owned items, as (itemId -> {quality -> count}).
+   The slim sync file ships a pre-aggregated <owned> block; a full save file
+   has to be walked instead. */
+function parseOwned(text){
+  const tally={};
+  const add=(id,q,n)=>{ (tally[id]=tally[id]||{})[q]=((tally[id]||{})[q]||0)+n; };
+
+  const oa=text.indexOf("<owned>");
+  if(oa>=0){
+    const blk=text.slice(oa,text.indexOf("</owned>",oa));
+    const re=/<i id="(\d+)" q="(\d+)" n="(\d+)"\/>/g; let m;
+    while((m=re.exec(blk))) add(m[1],+m[2],+m[3]);
+    return tally;
+  }
+
+  // Full save: only <items> blocks are things the player owns. itemsLostLastDeath
+  // and itemsFromPlayerToSell are different tag names, so they are excluded here
+  // for free. Depth counting handles a chest stored inside a chest.
+  let i=0;
+  while(true){
+    const a=text.indexOf("<items>",i); if(a<0) break;
+    let depth=1,p=a+7,close=-1;
+    while(p<text.length&&depth>0){
+      const o=text.indexOf("<items>",p), c=text.indexOf("</items>",p);
+      if(c<0) break;
+      if(o>=0&&o<c){ depth++; p=o+7; }
+      else { depth--; p=c+8; if(depth===0) close=c+8; }
+    }
+    if(close<0) break;
+    const blk=text.slice(a,close); i=close;
+    blk.split("<Item ").forEach(fr=>{
+      if(fr.indexOf('xsi:type="Object"')!==0) return;
+      const mid=/<itemId>(\d+)<\/itemId>/.exec(fr); if(!mid) return;
+      // Numeric ids collide across types: 20 is Leek AND Recycling Machine.
+      const mbc=/<bigCraftable>(true|false)<\/bigCraftable>/.exec(fr);
+      if(mbc&&mbc[1]==="true") return;
+      const mq=/<quality>(\d+)<\/quality>/.exec(fr);
+      const ms=/<stack>(\d+)<\/stack>/.exec(fr);
+      add(mid[1],mq?+mq[1]:0,ms?+ms[1]:1);
+    });
+  }
+  return tally;
+}
+
+// Per-slot owned count, honouring each slot's minimum quality (gold >= silver).
+function ownedForSlots(tally){
+  const out={};
+  ALL.forEach(b=>b.items.forEach((it,i)=>{
+    if(it.id==null) return;
+    const byQ=tally[String(it.id)]; if(!byQ) return;
+    const min=it.mq||0;
+    let n=0;
+    Object.keys(byQ).forEach(q=>{ if(+q>=min) n+=byQ[q]; });
+    if(n>0) out[K(b.id,i)]=n;
+  }));
+  return out;
+}
+
 // Pair each save slot to an app item by item id, so slot ORDER never matters.
 function pairSlots(items,slots){
   const used=items.map(()=>false);
@@ -443,10 +505,11 @@ function parseSave(text){
   const untracked=Object.keys(defs).map(i=>defs[i].name).filter(n=>!ALL.some(b=>b.name===n));
 
   // Independent cross-check: our per-room totals must agree with <areasComplete>.
-  let areaMismatch="";
+  let areaMismatch="", areaFlags=null;
   const ac=scalar(text,"areasComplete");
   if(ac){
     const flags=(ac.match(/<boolean>(true|false)<\/boolean>/g)||[]).map(x=>x.indexOf("true")>0);
+    areaFlags=flags;
     const order=["pantry","crafts","fishtank","boiler","vault","bulletin"];
     const bad=[];
     order.forEach((rid,i)=>{
@@ -462,10 +525,13 @@ function parseSave(text){
     if(bad.length) areaMismatch="disagrees on "+bad.join(", ");
   }
 
+  const owned=ownedForSlots(parseOwned(text));
+
   return {v:1,at:Date.now(),src:"file",
           date:{season:season,day:+day,year:+year},
           money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
-          donated,donatedBundles,untracked,areaMismatch,
+          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,
+          ownedCount:Object.keys(owned).length,
           verify:verifyIds(byName)};
 }
 
@@ -488,7 +554,8 @@ async function refreshFromUrl(){
   const text=await res.text();
   const r=parseSave(text);
   SAVE={v:1,at:Date.now(),src:"url",date:r.date,money:r.money,farm:r.farm,
-        donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok};
+        donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok,
+        areas:r.areas,owned:r.owned};
   persistSave();
   return SAVE;
 }
@@ -498,7 +565,8 @@ function persistSave(){
     if(SAVE){
       const o={v:SAVE.v,at:SAVE.at,src:SAVE.src,date:SAVE.date,money:SAVE.money,
                farm:SAVE.farm,donatedBundles:SAVE.donatedBundles,
-               verified:SAVE.verified,donated:[...SAVE.donated]};
+               verified:SAVE.verified,donated:[...SAVE.donated],
+               areas:SAVE.areas||null,owned:SAVE.owned||{}};
       localStorage.setItem(SKEY,JSON.stringify(o));
     } else localStorage.removeItem(SKEY);
   }catch(e){}
@@ -512,13 +580,101 @@ function loadSaveState(){
 
 /* Display state = manual checks UNION what the save says is already donated. */
 const isOn=k=>checked.has(k)||(!!SAVE&&SAVE.donated.has(k));
+const ownedQty=k=>(SAVE&&SAVE.owned&&SAVE.owned[k])||0;
+
+/* ---- deadline engine -------------------------------------------------------
+   Stardew seasons are 28 days. A crop must be planted by day 28-growth to
+   finish, and seasonal forage/fish vanish when the season turns. */
+const SEASON_LEN=28;
+const absDay=d=>(d.year-1)*112+SEASON_IX[d.season]*28+(d.day-1);
+const daysLeftInSeason=d=>SEASON_LEN-d.day+1;
+
+// Days from `d` until `season` next begins (0 if we are in it now).
+function daysUntilSeason(d,season){
+  const want=SEASON_IX[season], cur=SEASON_IX[d.season];
+  if(want===cur) return 0;
+  let steps=(want-cur+4)%4;
+  return daysLeftInSeason(d)+(steps-1)*SEASON_LEN;
+}
+
+// What the player should know about one slot, right now.
+function slotUrgency(b,it,i,d){
+  const key=K(b.id,i);
+  if(isOn(key)) return null;
+  const greenhouse=!!(SAVE&&SAVE.areas&&SAVE.areas[0]);
+  const seasons=it.s||null;
+  const out={key,bundle:b,item:it,idx:i,rank:9,msg:"",tag:""};
+
+  // Something you own and can hand in today outranks everything else.
+  const have=ownedQty(key);
+  if(have>=(it.q||1)){ out.rank=0; out.tag="ready"; out.msg="you have "+have; return out; }
+
+  if(it.tree){
+    const wait=daysUntilSeason(d,it.tree);
+    out.rank=5; out.tag="tree";
+    out.msg=wait===0?"in season now — a tree planted today fruits next "+it.tree
+                    :"fruits in "+it.tree+", "+wait+"d away · trees need 28d to grow";
+    if(have>0) out.msg="have "+have+"/"+(it.q||1)+" · "+out.msg;
+    return out;
+  }
+
+  if(it.g){
+    const canPlantNow=seasons&&seasons.indexOf(d.season)>=0;
+    if(canPlantNow){
+      const last=SEASON_LEN-it.g;
+      const left=last-d.day;
+      if(greenhouse){ out.rank=4; out.tag="grow"; out.msg="greenhouse — plant any time ("+it.g+"d)"; }
+      else if(left<0){ out.rank=6; out.tag="late"; out.msg="too late this "+d.season+" — needs "+it.g+"d"; }
+      else { out.rank=left<=3?1:2; out.tag="plant";
+             out.msg="plant by "+d.season+" "+last+(left===0?" — today!":" ("+left+"d left)"); }
+    } else {
+      const nxt=(seasons||[]).map(s=>daysUntilSeason(d,s)).sort((a,b)=>a-b)[0];
+      out.rank=greenhouse?4:7; out.tag="wait";
+      out.msg=greenhouse?"greenhouse — plant any time":"plantable in "+(nxt||0)+"d";
+    }
+    if(have>0) out.msg="have "+have+"/"+(it.q||1)+" · "+out.msg;
+    return out;
+  }
+
+  if(seasons){
+    if(seasons.indexOf(d.season)>=0){
+      const left=daysLeftInSeason(d);
+      out.rank=left<=7?1:3; out.tag="leaving";
+      out.msg="in season — "+left+" day"+(left===1?"":"s")+" left";
+    } else {
+      const nxt=seasons.map(s=>daysUntilSeason(d,s)).sort((a,b)=>a-b)[0];
+      out.rank=8; out.tag="gone"; out.msg="out of season — back in "+nxt+"d";
+    }
+    if(have>0) out.msg="have "+have+"/"+(it.q||1)+" · "+out.msg;
+    return out;
+  }
+
+  out.rank=have>0?3:9; out.tag=have>0?"partial":"any";
+  out.msg=have>0?"have "+have+"/"+(it.q||1):(it.h||"available year-round");
+  return out;
+}
+
+function allUrgencies(){
+  if(!SAVE) return [];
+  const d=SAVE.date, rows=[];
+  ALL.forEach(b=>{
+    if(stat(b).done) return;
+    b.items.forEach((it,i)=>{ const u=slotUrgency(b,it,i,d); if(u) rows.push(u); });
+  });
+  return rows.sort((a,b)=>a.rank-b.rank||a.bundle.name.localeCompare(b.bundle.name));
+}
 const stat=b=>{const have=b.items.filter((_,i)=>isOn(K(b.id,i))).length;return{have,done:have>=b.need};};
 const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(b=>stat(b).done).length,total:bs.length};};
 
 function renderNav(){
   const total=ALL.filter(b=>stat(b).done).length;
   document.getElementById("score").innerHTML=total+'<span>/'+ALL.length+'</span>';
-  document.getElementById("nav").innerHTML=ROOMS.map(r=>{
+  const nowN=SAVE?allUrgencies().filter(u=>u.tag==="ready"||u.tag==="plant"||u.tag==="leaving").length:0;
+  document.getElementById("nav").innerHTML=
+    '<button class="needed" data-tab="now" aria-current="'+(tab==="now")+'" style="background:'+
+      (tab==="now"?"var(--ink)":"transparent")+';color:'+(tab==="now"?"var(--plaque)":"var(--ink)")+
+      ';border-color:#c9a227">Right now'+(nowN?' <span class="n">'+nowN+'</span>':'')+'</button>'+
+    ROOMS.map(r=>{
     const p=roomProg(r.id),full=p.done===p.total;
     return '<button data-tab="'+r.id+'" data-full="'+(full?1:0)+'" aria-current="'+(tab===r.id)+'" style="border-color:'+r.color+';background:'+(full?r.color:"transparent")+'">'+
       r.name+' <span class="n">'+p.done+'/'+p.total+'</span></button>';
@@ -534,6 +690,8 @@ function bundleCard(b,color){
     let hint=it.h||"";
     if(don) hint="donated";
     else if(on&&SAVE) hint="not donated yet"+(it.h?" · "+it.h:"");
+    else { const hv=ownedQty(id);
+           if(hv) hint="have "+hv+(hv>=(it.q||1)?" — ready":" of "+(it.q||1))+(it.h?" · "+it.h:""); }
     return '<button class="slot'+(st.done&&!on?" moot":"")+(don?" donated":"")+'" data-id="'+id+'" aria-pressed="'+on+'">'+
       '<span class="name">'+(on?"✓ ":"")+esc(it.n)+(it.q?'<span class="qty"> ×'+it.q+'</span>':"")+'</span>'+
       (hint?'<span class="hint">'+esc(hint)+'</span>':"")+'</button>';
@@ -542,6 +700,53 @@ function bundleCard(b,color){
     '<div class="bhead" style="background:'+(st.done?"var(--done)":color)+'"><span>'+(st.done?"✓ ":"")+esc(b.name)+'</span>'+
     '<span class="c">'+Math.min(st.have,b.need)+'/'+b.need+'</span></div>'+
     '<div class="bbody"><div class="sub">'+esc(sub)+'</div><div class="slots">'+slots+'</div></div></div>';
+}
+
+const TAGS={
+  ready:  ["Ready to hand in",      "You have these already — take them to the Community Center."],
+  plant:  ["Plant now or wait a year","Sow these before the deadline or the bundle slips to next year."],
+  leaving:["Leaving with the season","Gather these before the season turns."],
+  tree:   ["Long lead time",        "Fruit trees take 28 days to mature — plant well ahead."],
+  partial:["Part-way there",        "You own some of what these slots need."],
+  late:   ["Missed this year",      "Not enough days left this season."],
+  gone:   ["Out of season",         "Nothing to do yet."],
+  wait:   ["Out of season",         "Nothing to do yet."],
+  grow:   ["Greenhouse",            "Plantable any time."],
+  any:    ["Whenever",              "No season or deadline attached."]
+};
+const TAGORDER=["ready","plant","leaving","tree","partial","late","gone","wait","grow","any"];
+
+function renderNow(){
+  if(!SAVE) return '<section class="plaque panel"><h2>Right now</h2>'+
+    '<p>Link your save and this becomes a live to-do list: what you already own, '+
+    'what is about to leave with the season, and what must be planted today.</p>'+
+    '<button data-act="importsave">Import a save</button></section>';
+
+  const d=SAVE.date, rows=allUrgencies();
+  const groups={}; rows.forEach(r=>{ (groups[r.tag]=groups[r.tag]||[]).push(r); });
+  const left=daysLeftInSeason(d);
+
+  let html='<section class="plaque panel"><h2>Right now</h2>'+
+    '<p class="kv">'+esc(fmtDate(d))+' · <b style="min-width:0">'+left+' day'+(left===1?"":"s")+
+    ' left in '+esc(d.season)+'</b></p>';
+
+  let shown=0;
+  TAGORDER.forEach(tag=>{
+    const g=groups[tag]; if(!g||!g.length) return;
+    if(tag==="gone"||tag==="wait"||tag==="any") return;   // not actionable today
+    shown++;
+    html+='<h3>'+esc(TAGS[tag][0])+'</h3><p>'+esc(TAGS[tag][1])+'</p>';
+    html+=g.map(r=>'<div class="need urg-'+tag+'" style="border-left:4px solid '+r.bundle.color+'">'+
+      '<div class="t">'+esc(r.item.n)+(r.item.q?'<span class="qty"> ×'+r.item.q+'</span>':"")+
+        ' <span class="m">'+esc(r.bundle.name)+' · '+esc(r.bundle.roomName)+'</span></div>'+
+      '<div class="items"><i>'+esc(r.msg)+'</i></div></div>').join("");
+  });
+  if(!shown) html+='<p>Nothing urgent. Everything left is out of season or has no deadline.</p>';
+
+  const rest=(groups.gone||[]).length+(groups.wait||[]).length+(groups.any||[]).length;
+  if(rest) html+='<h3>Not yet</h3><p>'+rest+' more slot'+(rest===1?"":"s")+
+    ' are out of season or have no deadline — see Still needed.</p>';
+  return html+'</section>';
 }
 
 function renderNeeded(){
@@ -676,6 +881,7 @@ function renderStorage(){
 function render(){
   renderNav();
   const main=document.getElementById("main");
+  if(tab==="now"){ main.innerHTML=renderNow(); renderStatus(); return; }
   if(tab==="import"){ main.innerHTML=renderImport(); renderStatus(); return; }
   if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
   if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
@@ -692,7 +898,8 @@ const ACTIONS={
     if(!pendingImport) return;
     const r=pendingImport;
     SAVE={v:1,at:r.at,src:r.src,date:r.date,money:r.money,farm:r.farm,
-          donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok};
+          donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok,
+          areas:r.areas,owned:r.owned};
     pendingImport=null;
     persistSave();
     tab="crafts"; render(); window.scrollTo(0,0);
@@ -790,6 +997,7 @@ if(navigator.storage&&navigator.storage.persisted)
   navigator.storage.persisted().then(p=>{ persisted=p?"yes":"no"; });
 
 SAVE=loadSaveState();
+if(SAVE) tab="now";
 load().then(s=>{checked=s;render();});
 
 // Keep the installed app from getting stuck on an old build: check for a new
