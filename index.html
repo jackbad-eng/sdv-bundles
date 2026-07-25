@@ -129,8 +129,7 @@
 
   <footer>
     <small id="note"></small>
-    <span><button data-act="importsave">Import save</button>
-    <button data-act="storage">Storage &amp; backup</button></span>
+    <span id="quick"></span>
   </footer>
 </div>
 
@@ -210,7 +209,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25d";
+const BUILD="2026-07-25e";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -266,6 +265,10 @@ async function save(){
 }
 
 function renderStatus(){
+  const q=document.getElementById("quick");
+  if(q) q.innerHTML=(getSyncUrl()?'<button data-act="refresh">Refresh save</button>':"")+
+    '<button data-act="importsave">Import save</button>'+
+    '<button data-act="storage">Storage &amp; backup</button>';
   const el=document.getElementById("note"); if(!el) return;
   if(flashMsg){ el.textContent=flashMsg; return; }
   if(saveBlocked){
@@ -466,6 +469,30 @@ function parseSave(text){
           verify:verifyIds(byName)};
 }
 
+/* Sync URL lives only in this device's storage — never in the repo. */
+const UKEY="cc-syncurl-v1";
+const getSyncUrl=()=>{ try{ return localStorage.getItem(UKEY)||""; }catch(e){ return ""; } };
+const setSyncUrl=u=>{ try{ u?localStorage.setItem(UKEY,u):localStorage.removeItem(UKEY); }catch(e){} };
+
+async function refreshFromUrl(){
+  const url=getSyncUrl();
+  if(!url) throw new Error("No sync link saved yet.");
+  let res;
+  try{
+    // cache-bust so a refresh always sees the newest publish
+    res=await fetch(url+(url.indexOf("?")<0?"?":"&")+"t="+Date.now(),{cache:"no-store"});
+  }catch(e){
+    throw new Error("Couldn't reach the sync link. Check the connection, or that the link is still valid.");
+  }
+  if(!res.ok) throw new Error("The sync link returned "+res.status+". Has the gist been deleted?");
+  const text=await res.text();
+  const r=parseSave(text);
+  SAVE={v:1,at:Date.now(),src:"url",date:r.date,money:r.money,farm:r.farm,
+        donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok};
+  persistSave();
+  return SAVE;
+}
+
 function persistSave(){
   try{
     if(SAVE){
@@ -562,6 +589,12 @@ function renderImport(){
     '<h3>Finding the file</h3>'+
     '<p class="kv">'+esc("%AppData%\\Roaming\\StardewValley\\Saves\\<Farmer>_<number>\\")+'</p>'+
     '<p>Pick the file with <b>no extension</b> — not <code>SaveGameInfo</code> and not the <code>_old</code> one.</p>'+
+    '<h3>Refresh over the network</h3>'+
+    '<p>Paste your sync link once, then one tap pulls the latest save — no file picker, no Drive app.</p>'+
+    '<textarea id="syncurl" rows="2" placeholder="https://gist.githubusercontent.com/.../save-slim.xml">'+esc(getSyncUrl())+'</textarea>'+
+    '<button data-act="savedurl">Save link</button>'+
+    (getSyncUrl()?'<button data-act="refresh">Refresh now</button>':'')+
+    '<div id="syncmsg"></div>'+
     '<h3>No file picker on this device?</h3>'+
     '<p>Import on your computer instead, then move it here with a code — no Drive or Files app needed.</p>'+
     '<p class="kv">1. On the PC, open this page and import the save.<br>'+
@@ -668,6 +701,26 @@ const ACTIONS={
   unlink(){
     if(!confirm("Unlink the save? Your own checkmarks stay put.")) return;
     SAVE=null; persistSave(); render();
+  },
+  savedurl(){
+    const el=document.getElementById("syncurl"); if(!el) return;
+    const u=el.value.trim();
+    if(u&&!/^https:\/\//i.test(u)){
+      document.getElementById("syncmsg").innerHTML='<p class="bad">The link must start with https://</p>';
+      return;
+    }
+    setSyncUrl(u); render();
+    const m=document.getElementById("syncmsg");
+    if(m) m.innerHTML='<p class="ok">'+(u?"Link saved. Tap Refresh now.":"Link cleared.")+'</p>';
+  },
+  async refresh(){
+    const m=()=>document.getElementById("syncmsg");
+    if(m()) m().innerHTML="<p>Fetching…</p>";
+    try{
+      const s=await refreshFromUrl();
+      tab="crafts"; render(); window.scrollTo(0,0);
+      flash("Synced "+fmtDate(s.date)+" · "+s.donatedBundles+" bundles donated.");
+    }catch(err){ if(m()) m().innerHTML='<p class="bad">'+esc(err.message)+'</p>'; }
   },
   canary(){
     try{
