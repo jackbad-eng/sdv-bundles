@@ -215,7 +215,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25g";
+const BUILD="2026-07-25h";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -693,7 +693,7 @@ function renderNav(){
     '<button class="needed" data-tab="now" aria-current="'+(tab==="now")+'" style="background:'+
       (tab==="now"?"var(--ink)":"transparent")+';color:'+(tab==="now"?"var(--plaque)":"var(--ink)")+
       ';border-color:#c9a227">Right now'+(nowN?' <span class="n">'+nowN+'</span>':'')+'</button>'+
-    (SAVE&&SAVE.inv?'<button class="needed" data-tab="inv" aria-current="'+(tab==="inv")+'" style="background:'+
+    (SAVE?'<button class="needed" data-tab="inv" aria-current="'+(tab==="inv")+'" style="background:'+
       (tab==="inv"?"var(--ink)":"transparent")+';color:'+(tab==="inv"?"var(--plaque)":"var(--ink)")+
       '">What I own</button>':'')+
     ROOMS.map(r=>{
@@ -1091,6 +1091,12 @@ if(navigator.storage&&navigator.storage.persisted)
 
 SAVE=loadSaveState();
 if(SAVE) tab="now";
+
+// A save linked before inventory existed has no inv. If a sync link is set,
+// quietly pull it once rather than making the user work out what to tap.
+if(SAVE&&!SAVE.inv&&getSyncUrl()){
+  refreshFromUrl().then(()=>render()).catch(()=>{});
+}
 load().then(s=>{checked=s;render();});
 
 // Keep the installed app from getting stuck on an old build: check for a new
