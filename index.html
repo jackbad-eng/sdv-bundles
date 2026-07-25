@@ -210,7 +210,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25c";
+const BUILD="2026-07-25d";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -293,23 +293,50 @@ function unb64u(s){
     return u;
   }catch(e){ return null; }
 }
-function encodeCode(set){
-  const bits=new Uint8Array(Math.ceil(SLOT_COUNT/8));
-  set.forEach(k=>{const i=FLAT_IX.get(k); if(i!=null) bits[i>>3]|=1<<(i&7);});
-  const out=new Uint8Array(5+bits.length);
-  out[0]=83; out[1]=1; out[2]=FINGERPRINT&255; out[3]=FINGERPRINT>>8; out[4]=1;
-  out.set(bits,5);
+const BITS=Math.ceil(SLOT_COUNT/8);
+const toBitmap=set=>{
+  const b=new Uint8Array(BITS);
+  set.forEach(k=>{const i=FLAT_IX.get(k); if(i!=null) b[i>>3]|=1<<(i&7);});
+  return b;
+};
+const fromBitmap=b=>{
+  const s=new Set();
+  for(let i=0;i<SLOT_COUNT;i++) if((b[i>>3]>>(i&7))&1) s.add(FLAT[i]);
+  return s;
+};
+// v2 carries manual checks AND, when a save is linked, the donated slots + date,
+// so a whole device can be synced by pasting one code. v1 codes still decode.
+function encodeCode(set,sv){
+  const flags=1|(sv?6:0);
+  const out=new Uint8Array(5+BITS+(sv?BITS+4:0));
+  out[0]=83; out[1]=2; out[2]=FINGERPRINT&255; out[3]=FINGERPRINT>>8; out[4]=flags;
+  let p=5;
+  out.set(toBitmap(set),p); p+=BITS;
+  if(sv){
+    out.set(toBitmap(sv.donated),p); p+=BITS;
+    out[p++]=SEASON_IX[sv.date.season]||0;
+    out[p++]=sv.date.day&255;
+    out[p++]=sv.date.year&255;
+    out[p++]=(sv.date.year>>8)&255;
+  }
   return b64u(out);
 }
 function decodeCode(str){
   const b=unb64u(String(str||""));
-  if(!b||b.length<5||b[0]!==83) throw new Error("That doesn't look like a backup code.");
-  if(b[1]!==1) throw new Error("That code came from a different version of the app.");
+  if(!b||b.length<5||b[0]!==83) throw new Error("That doesn't look like a code from this app.");
+  if(b[1]!==1&&b[1]!==2) throw new Error("That code came from a different version of the app.");
   if((b[2]|(b[3]<<8))!==FINGERPRINT)
     throw new Error("That code was made by a different build. Update the app on both devices, then make a fresh code.");
-  const bits=b.subarray(5), s=new Set();
-  for(let i=0;i<SLOT_COUNT;i++) if((bits[i>>3]>>(i&7))&1) s.add(FLAT[i]);
-  return s;
+  if(b[1]===1) return {manual:fromBitmap(b.subarray(5)),save:null};
+  const flags=b[4]; let p=5;
+  const manual=fromBitmap(b.subarray(p,p+BITS)); p+=BITS;
+  let sv=null;
+  if(flags&2){
+    const donated=fromBitmap(b.subarray(p,p+BITS)); p+=BITS;
+    const season=SEASONS[b[p++]]||"spring", day=b[p++], year=b[p]|(b[p+1]<<8);
+    sv={date:{season,day,year},donated};
+  }
+  return {manual,save:sv};
 }
 
 /* ---- Stardew save import --------------------------------------------------- */
@@ -534,8 +561,18 @@ function renderImport(){
     '<div id="importmsg"></div>'+
     '<h3>Finding the file</h3>'+
     '<p class="kv">'+esc("%AppData%\\Roaming\\StardewValley\\Saves\\<Farmer>_<number>\\")+'</p>'+
-    '<p>Pick the file with <b>no extension</b> — not <code>SaveGameInfo</code> and not the <code>_old</code> one. '+
-    'On your phone, back that Saves folder up with Google Drive for Desktop, then choose it here via Files → Google Drive.</p>'+
+    '<p>Pick the file with <b>no extension</b> — not <code>SaveGameInfo</code> and not the <code>_old</code> one.</p>'+
+    '<h3>No file picker on this device?</h3>'+
+    '<p>Import on your computer instead, then move it here with a code — no Drive or Files app needed.</p>'+
+    '<p class="kv">1. On the PC, open this page and import the save.<br>'+
+    '2. Go to <b>Storage &amp; backup</b> and copy the code.<br>'+
+    '3. Text or email it to yourself, then paste it below.</p>'+
+    '<textarea id="codein" rows="3" placeholder="Paste the code from your computer here"></textarea>'+
+    '<button data-act="restore">Apply code</button>'+
+    '<div id="restoremsg"></div>'+
+    (SAVE?'<h3>Code for another device</h3>'+
+      '<textarea id="codeout" rows="3" readonly>'+esc(encodeCode(checked,SAVE))+'</textarea>'+
+      '<button data-act="copy">Copy code</button>':'')+
     '</section>';
 }
 
@@ -589,8 +626,9 @@ function renderStorage(){
     '<button data-act="canary">Run write test</button>'+
     '<button data-act="persist">Request persistent storage</button>'+
     '<h3>Backup code</h3>'+
-    '<p>A short code holding all '+SLOT_COUNT+' checkboxes. Keep it in Notes — it restores your progress on any device, even if the browser clears its data.</p>'+
-    '<textarea id="codeout" rows="2" readonly>'+esc(encodeCode(checked))+'</textarea>'+
+    '<p>Holds all '+SLOT_COUNT+' checkboxes'+(SAVE?', plus the imported save date and donated bundles':'')+
+    '. Keep it in Notes — it restores everything on any device, even if the browser clears its data.</p>'+
+    '<textarea id="codeout" rows="3" readonly>'+esc(encodeCode(checked,SAVE))+'</textarea>'+
     '<button data-act="copy">Copy code</button>'+
     '<h3>Restore from a code</h3>'+
     '<textarea id="codein" rows="2" placeholder="Paste a backup code here"></textarea>'+
@@ -655,10 +693,21 @@ const ACTIONS={
   restore(){
     const el=document.getElementById("codein"), msg=document.getElementById("restoremsg");
     try{
-      const s=decodeCode(el.value);
-      checked=s; saveBlocked=false; save(); render();
-      const m=document.getElementById("restoremsg");
-      if(m) m.innerHTML='<p class="ok">Restored '+s.size+' checks.</p>';
+      const r=decodeCode(el.value);
+      checked=r.manual; saveBlocked=false;
+      let extra="";
+      if(r.save){
+        SAVE={v:1,at:Date.now(),src:"code",date:r.save.date,money:0,farm:"",
+              donated:r.save.donated,donatedBundles:0,verified:true};
+        SAVE.donatedBundles=ALL.filter(b=>{
+          let c=0; b.items.forEach((_,i)=>{ if(SAVE.donated.has(K(b.id,i))) c++; });
+          return c>=b.need;
+        }).length;
+        persistSave();
+        extra=" · save "+fmtDate(SAVE.date)+", "+SAVE.donatedBundles+" bundles donated";
+      }
+      save(); tab="crafts"; render(); window.scrollTo(0,0);
+      flash("Restored "+r.manual.size+" checks"+extra+".");
     }catch(err){ if(msg) msg.innerHTML='<p class="bad">'+esc(err.message)+'</p>'; }
   },
   unblock(){ saveBlocked=false; try{ localStorage.removeItem(META); }catch(e){} save(); render(); },
