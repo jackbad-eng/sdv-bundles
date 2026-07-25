@@ -68,6 +68,9 @@
   .slot[aria-pressed="true"]{background:var(--done);border-color:var(--done);color:#fff}
   .slot[aria-pressed="true"] .hint{color:rgba(255,255,255,.85)}
   .slot.moot{opacity:.4}
+  .slot.donated{background:#4a7524;border-color:#3d6b1a}
+  .panel input[type=file]{display:block;margin-top:8px;font:inherit;font-size:12px;color:var(--ink);max-width:100%}
+  .panel code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
   .slot:active{transform:scale(.98)}
 
   .needwrap{padding:14px}
@@ -126,7 +129,8 @@
 
   <footer>
     <small id="note"></small>
-    <button data-act="storage">Storage &amp; backup</button>
+    <span><button data-act="importsave">Import save</button>
+    <button data-act="storage">Storage &amp; backup</button></span>
   </footer>
 </div>
 
@@ -206,7 +210,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-25b";
+const BUILD="2026-07-25c";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -263,6 +267,7 @@ async function save(){
 
 function renderStatus(){
   const el=document.getElementById("note"); if(!el) return;
+  if(flashMsg){ el.textContent=flashMsg; return; }
   if(saveBlocked){
     el.innerHTML='<span class="bad">Not saving</span> — stored progress was unreadable. Open Storage &amp; backup.';
     return;
@@ -272,7 +277,8 @@ function renderStatus(){
     return;
   }
   const t=lastWrite?lastWrite.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"not yet";
-  el.textContent=`${checked.size} checked · saved ${t} · ${backend} · ${standalone()?"home screen":"browser tab"} · build ${BUILD}`;
+  const sv=SAVE?` · save ${fmtDate(SAVE.date)}`:"";
+  el.textContent=`${checked.size} checked${sv} · saved ${t} · ${backend} · ${standalone()?"home screen":"browser tab"} · build ${BUILD}`;
 }
 
 /* ---- backup / restore code -------------------------------------------------
@@ -306,8 +312,152 @@ function decodeCode(str){
   return s;
 }
 
-// Single seam for "is this slot satisfied". Phase 2 unions in donated-from-save here.
-const isOn=k=>checked.has(k);
+/* ---- Stardew save import --------------------------------------------------- */
+const SKEY="cc-save-v1";
+const XSI="http://www.w3.org/2001/XMLSchema-instance";
+let SAVE=null, pendingImport=null;
+const SEASON_IX={spring:0,summer:1,fall:2,winter:3};
+const fmtDate=d=>d?d.season[0].toUpperCase()+d.season.slice(1)+" "+d.day+", Year "+d.year:"—";
+
+function xfrag(s){
+  const doc=new DOMParser().parseFromString('<r xmlns:xsi="'+XSI+'">'+s+'</r>',"application/xml");
+  if(doc.querySelector("parsererror")) throw new Error("This file isn't readable as a Stardew save.");
+  return doc;
+}
+function scalar(text,tag){
+  const a=text.indexOf("<"+tag+">"); if(a<0) return null;
+  const b=text.indexOf("</"+tag+">",a); if(b<0) return null;
+  return text.slice(a+tag.length+2,b);
+}
+// Pair each save slot to an app item by item id, so slot ORDER never matters.
+function pairSlots(items,slots){
+  const used=items.map(()=>false);
+  return slots.map(s=>{
+    for(let i=0;i<items.length;i++){
+      if(used[i]) continue;
+      const it=items[i];
+      const hit = s.id==="-1" ? it.gold!=null : String(it.id)===String(s.id);
+      if(hit){ used[i]=true; return i; }
+    }
+    return -1;
+  });
+}
+function verifyIds(byName){
+  const problems=[];
+  ALL.forEach(b=>{
+    const d=byName[b.name];
+    if(!d){ problems.push("no data for "+b.name); return; }
+    if(d.required!==b.need) problems.push(b.name+": needs "+d.required+", app says "+b.need);
+    if(d.slots.length!==b.items.length) problems.push(b.name+": "+d.slots.length+" slots, app has "+b.items.length);
+    pairSlots(b.items,d.slots).forEach((i,j)=>{
+      const s=d.slots[j];
+      if(i<0){ problems.push(b.name+": nothing matches item id "+s.id); return; }
+      if(s.id==="-1") return;
+      const it=b.items[i];
+      if((it.q||1)!==s.count) problems.push(b.name+"/"+it.n+": qty "+s.count+" vs "+(it.q||1));
+      if((it.mq||0)!==s.mq) problems.push(b.name+"/"+it.n+": quality "+s.mq+" vs "+(it.mq||0));
+    });
+  });
+  return {ok:!problems.length,problems};
+}
+
+function parseSave(text){
+  if(text.indexOf("<SaveGame")<0 && text.indexOf("<bundleData>")<0)
+    throw new Error("That doesn't look like a Stardew save. Pick the file with no extension, not SaveGameInfo.");
+
+  const season=scalar(text,"currentSeason"), day=scalar(text,"dayOfMonth"), year=scalar(text,"year");
+  if(!season||!day||!year) throw new Error("Couldn't read the in-game date from this file.");
+
+  const bdA=text.indexOf("<bundleData>");
+  if(bdA<0) throw new Error("No bundle definitions here — this needs Stardew 1.5 or newer.");
+  const bdoc=xfrag(text.slice(bdA,text.indexOf("</bundleData>",bdA)+13));
+  const defs={}, byName={};
+  Array.prototype.forEach.call(bdoc.getElementsByTagName("item"),el=>{
+    const k=el.querySelector("key>string"), v=el.querySelector("value>string");
+    if(!k||!v) return;
+    const parts=v.textContent.split("/"), toks=parts[2].trim().split(/\s+/), slots=[];
+    for(let i=0;i+2<toks.length;i+=3) slots.push({id:toks[i],count:+toks[i+1],mq:+toks[i+2]});
+    const d={idx:+k.textContent.split("/").pop(),name:parts[0],slots,
+             required:parts[4]&&parts[4].trim()?+parts[4]:slots.length};
+    defs[d.idx]=d; byName[d.name]=d;
+  });
+
+  const ccA=text.indexOf('<GameLocation xsi:type="CommunityCenter">');
+  if(ccA<0) throw new Error("Couldn't find the Community Center in this save.");
+  const bA=text.indexOf("<bundles>",ccA);
+  if(bA<0) throw new Error("Couldn't find the bundle progress in this save.");
+  const sdoc=xfrag(text.slice(bA,text.indexOf("</bundles>",bA)+10));
+  const state={};
+  Array.prototype.forEach.call(sdoc.getElementsByTagName("item"),el=>{
+    const k=el.querySelector("key>int"); if(!k) return;
+    state[+k.textContent]=Array.prototype.map.call(
+      el.getElementsByTagName("boolean"),x=>x.textContent==="true");
+  });
+
+  // Map donated flags onto app slots. Arrays are padded to 3x the slot count —
+  // only the first `slots.length` entries mean anything.
+  const donated=new Set(); let donatedBundles=0;
+  ALL.forEach(b=>{
+    const d=byName[b.name]; if(!d) return;
+    const bools=state[d.idx]; if(!bools) return;
+    const pair=pairSlots(b.items,d.slots);
+    let have=0;
+    for(let j=0;j<d.slots.length;j++){
+      if(!bools[j]) continue;
+      have++;
+      if(pair[j]>=0) donated.add(K(b.id,pair[j]));
+    }
+    if(have>=d.required) donatedBundles++;
+  });
+
+  const untracked=Object.keys(defs).map(i=>defs[i].name).filter(n=>!ALL.some(b=>b.name===n));
+
+  // Independent cross-check: our per-room totals must agree with <areasComplete>.
+  let areaMismatch="";
+  const ac=scalar(text,"areasComplete");
+  if(ac){
+    const flags=(ac.match(/<boolean>(true|false)<\/boolean>/g)||[]).map(x=>x.indexOf("true")>0);
+    const order=["pantry","crafts","fishtank","boiler","vault","bulletin"];
+    const bad=[];
+    order.forEach((rid,i)=>{
+      const bs=ALL.filter(b=>b.roomId===rid);
+      const done=bs.every(b=>{
+        const d=byName[b.name], bools=d&&state[d.idx];
+        if(!d||!bools) return false;
+        let c=0; for(let j=0;j<d.slots.length;j++) if(bools[j]) c++;
+        return c>=d.required;
+      });
+      if(flags[i]!=null && flags[i]!==done) bad.push(rid);
+    });
+    if(bad.length) areaMismatch="disagrees on "+bad.join(", ");
+  }
+
+  return {v:1,at:Date.now(),src:"file",
+          date:{season:season,day:+day,year:+year},
+          money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
+          donated,donatedBundles,untracked,areaMismatch,
+          verify:verifyIds(byName)};
+}
+
+function persistSave(){
+  try{
+    if(SAVE){
+      const o={v:SAVE.v,at:SAVE.at,src:SAVE.src,date:SAVE.date,money:SAVE.money,
+               farm:SAVE.farm,donatedBundles:SAVE.donatedBundles,
+               verified:SAVE.verified,donated:[...SAVE.donated]};
+      localStorage.setItem(SKEY,JSON.stringify(o));
+    } else localStorage.removeItem(SKEY);
+  }catch(e){}
+}
+function loadSaveState(){
+  try{
+    const v=localStorage.getItem(SKEY); if(!v) return null;
+    const o=JSON.parse(v); o.donated=new Set(o.donated||[]); return o;
+  }catch(e){ return null; }
+}
+
+/* Display state = manual checks UNION what the save says is already donated. */
+const isOn=k=>checked.has(k)||(!!SAVE&&SAVE.donated.has(k));
 const stat=b=>{const have=b.items.filter((_,i)=>isOn(K(b.id,i))).length;return{have,done:have>=b.need};};
 const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(b=>stat(b).done).length,total:bs.length};};
 
@@ -326,10 +476,13 @@ function bundleCard(b,color){
   const sub=st.done?(b.reward?"Reward: "+b.reward:"Complete")
     :(partial?"Any "+short+" more of these "+b.items.length:short+" to go")+(b.note?" · "+b.note:"");
   const slots=b.items.map((it,i)=>{
-    const id=K(b.id,i),on=isOn(id);
-    return '<button class="slot'+(st.done&&!on?" moot":"")+'" data-id="'+id+'" aria-pressed="'+on+'">'+
+    const id=K(b.id,i),on=isOn(id),don=!!SAVE&&SAVE.donated.has(id);
+    let hint=it.h||"";
+    if(don) hint="donated";
+    else if(on&&SAVE) hint="not donated yet"+(it.h?" · "+it.h:"");
+    return '<button class="slot'+(st.done&&!on?" moot":"")+(don?" donated":"")+'" data-id="'+id+'" aria-pressed="'+on+'">'+
       '<span class="name">'+(on?"✓ ":"")+esc(it.n)+(it.q?'<span class="qty"> ×'+it.q+'</span>':"")+'</span>'+
-      (it.h?'<span class="hint">'+esc(it.h)+'</span>':"")+'</button>';
+      (hint?'<span class="hint">'+esc(hint)+'</span>':"")+'</button>';
   }).join("");
   return '<div class="bundle" style="border:4px solid '+(st.done?"var(--done)":color)+'">'+
     '<div class="bhead" style="background:'+(st.done?"var(--done)":color)+'"><span>'+(st.done?"✓ ":"")+esc(b.name)+'</span>'+
@@ -356,7 +509,62 @@ function renderNeeded(){
     '</section>';
 }
 
-let canary="not run yet", persisted="unknown";
+let canary="not run yet", persisted="unknown", flashMsg="", flashT=null;
+
+function flash(m){
+  flashMsg=m; clearTimeout(flashT);
+  flashT=setTimeout(()=>{flashMsg="";renderStatus();},2600);
+  renderStatus();
+}
+
+function renderImport(){
+  const s=SAVE;
+  return '<section class="plaque panel"><h2>Import your Stardew save</h2>'+
+    '<p>Fills in the in-game date and every bundle you have already turned in. '+
+    'The file is read on this device only — nothing is uploaded anywhere.</p>'+
+    (s?'<h3>Linked save</h3><div class="kv">'+
+        '<b>farm</b>'+esc(s.farm||"—")+'<br>'+
+        '<b>in-game date</b>'+esc(fmtDate(s.date))+'<br>'+
+        '<b>bundles donated</b>'+s.donatedBundles+' / '+ALL.length+'<br>'+
+        '<b>imported</b>'+esc(new Date(s.at).toLocaleString())+
+      '</div><button data-act="unlink">Unlink this save</button>'
+      :'<p class="kv">No save linked yet.</p>')+
+    '<h3>Choose your save file</h3>'+
+    '<input type="file" id="savefile">'+
+    '<div id="importmsg"></div>'+
+    '<h3>Finding the file</h3>'+
+    '<p class="kv">'+esc("%AppData%\\Roaming\\StardewValley\\Saves\\<Farmer>_<number>\\")+'</p>'+
+    '<p>Pick the file with <b>no extension</b> — not <code>SaveGameInfo</code> and not the <code>_old</code> one. '+
+    'On your phone, back that Saves folder up with Google Drive for Desktop, then choose it here via Files → Google Drive.</p>'+
+    '</section>';
+}
+
+async function handleFile(f){
+  const box=()=>document.getElementById("importmsg");
+  if(!f||!box()) return;
+  box().innerHTML='<p>Reading '+esc(f.name)+' ('+Math.round(f.size/1024)+" KB) …</p>";
+  try{
+    const text=await f.text();
+    const r=parseSave(text);
+    pendingImport=r;
+    box().innerHTML='<div class="kv">'+
+        '<b>farm</b>'+esc(r.farm||"—")+'<br>'+
+        '<b>in-game date</b>'+esc(fmtDate(r.date))+'<br>'+
+        '<b>gold</b>'+r.money+'<br>'+
+        '<b>bundles donated</b>'+r.donatedBundles+' / '+ALL.length+'<br>'+
+        '<b>slots donated</b>'+r.donated.size+'<br>'+
+        '<b>item check</b>'+(r.verify.ok?'<span class="ok">passed</span>'
+          :'<span class="bad">'+r.verify.problems.length+' problems</span>')+'<br>'+
+        '<b>cross-check</b>'+(r.areaMismatch?'<span class="bad">'+esc(r.areaMismatch)+'</span>'
+          :'<span class="ok">agrees with the game</span>')+
+      '</div>'+
+      (r.verify.ok?"":'<div class="warn">'+esc(r.verify.problems.slice(0,4).join(" · "))+'</div>')+
+      (r.untracked.length?'<div class="warn">This app doesn\'t track: '+esc(r.untracked.join(", "))+'</div>':'')+
+      '<button data-act="apply">Apply this save</button>';
+  }catch(err){
+    box().innerHTML='<p class="bad">'+esc(err.message)+'</p>';
+  }
+}
 
 function renderStorage(){
   const raw=(()=>{ try{ return localStorage.getItem(KEY); }catch(e){ return null; } })();
@@ -397,6 +605,7 @@ function renderStorage(){
 function render(){
   renderNav();
   const main=document.getElementById("main");
+  if(tab==="import"){ main.innerHTML=renderImport(); renderStatus(); return; }
   if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
   if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
   const r=ROOMS.find(x=>x.id===tab);
@@ -407,6 +616,21 @@ function render(){
 
 const ACTIONS={
   storage(){ tab="storage"; render(); window.scrollTo(0,0); },
+  importsave(){ tab="import"; render(); window.scrollTo(0,0); },
+  apply(){
+    if(!pendingImport) return;
+    const r=pendingImport;
+    SAVE={v:1,at:r.at,src:r.src,date:r.date,money:r.money,farm:r.farm,
+          donated:r.donated,donatedBundles:r.donatedBundles,verified:r.verify.ok};
+    pendingImport=null;
+    persistSave();
+    tab="crafts"; render(); window.scrollTo(0,0);
+    flash("Imported "+fmtDate(SAVE.date)+" · "+SAVE.donatedBundles+" bundles already donated.");
+  },
+  unlink(){
+    if(!confirm("Unlink the save? Your own checkmarks stay put.")) return;
+    SAVE=null; persistSave(); render();
+  },
   canary(){
     try{
       const k="cc-canary", v=String(Date.now());
@@ -449,12 +673,21 @@ document.addEventListener("click",e=>{
   if(t.dataset.act){ const fn=ACTIONS[t.dataset.act]; if(fn) fn(); return; }
   if(t.dataset.tab){ tab=t.dataset.tab; render(); window.scrollTo(0,0); return; }
   if(t.dataset.season){ season=t.dataset.season; render(); return; }
-  if(t.dataset.id){ checked.has(t.dataset.id)?checked.delete(t.dataset.id):checked.add(t.dataset.id); save(); render(); return; }
+  if(t.dataset.id){
+    const k=t.dataset.id;
+    if(SAVE&&SAVE.donated.has(k)){ flash("The Junimos already have this one."); return; }
+    checked.has(k)?checked.delete(k):checked.add(k); save(); render(); return;
+  }
+});
+
+document.addEventListener("change",e=>{
+  if(e.target&&e.target.id==="savefile") handleFile(e.target.files&&e.target.files[0]);
 });
 
 if(navigator.storage&&navigator.storage.persisted)
   navigator.storage.persisted().then(p=>{ persisted=p?"yes":"no"; });
 
+SAVE=loadSaveState();
 load().then(s=>{checked=s;render();});
 
 // Keep the installed app from getting stuck on an old build: check for a new
