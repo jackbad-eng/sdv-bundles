@@ -89,6 +89,21 @@
   footer button{background:transparent;border:2px solid #8a7a62;color:#c9b997;font:inherit;font-size:12px;padding:10px 12px;cursor:pointer;min-height:44px}
   button:focus-visible{outline:3px solid #ffe9a8;outline-offset:2px}
   @media(prefers-reduced-motion:reduce){.slot:active{transform:none}}
+
+  .panel{padding:14px}
+  .panel h2{margin:0 0 4px;font-size:19px;font-weight:800}
+  .panel h3{margin:18px 0 6px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--inkSoft)}
+  .panel p{font-size:12.5px;margin:6px 0}
+  .kv{font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.75}
+  .kv b{display:inline-block;min-width:9.5em;font-weight:400;color:var(--inkSoft)}
+  .panel button{background:transparent;border:2px solid var(--slotEdge);color:var(--ink);
+    font:700 12px/1 inherit;padding:10px 11px;cursor:pointer;min-height:40px;margin:6px 6px 0 0}
+  .panel textarea{width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12px;padding:8px;
+    border:2px solid var(--slotEdge);background:var(--slot);color:var(--ink);margin-top:6px}
+  .warn{background:#8c2f2f;color:#fff;padding:9px 11px;font-size:12px;margin:10px 0}
+  .ok{color:#3d6b1a;font-weight:700}
+  .bad{color:#8c2f2f;font-weight:700}
+  .danger button{border-color:#8c2f2f;color:#8c2f2f}
 </style>
 </head>
 <body>
@@ -110,8 +125,8 @@
   <main id="main"></main>
 
   <footer>
-    <small id="note">Standard bundles (not Remixed). Progress saves automatically.</small>
-    <button id="reset">Start a new save</button>
+    <small id="note"></small>
+    <button data-act="storage">Storage &amp; backup</button>
   </footer>
 </div>
 
@@ -120,97 +135,180 @@ const SEASONS=["spring","summer","fall","winter"];
 const ROOMS=[
 {id:"crafts",name:"Crafts Room",unlocks:"Repairs the bridge to the Quarry",color:"#7ba428",bundles:[
  {id:"spring-forage",name:"Spring Foraging",need:4,reward:"30 Spring Seeds",items:[
-  {n:"Wild Horseradish",s:["spring"]},{n:"Daffodil",s:["spring"]},{n:"Leek",s:["spring"]},{n:"Dandelion",s:["spring"]}]},
+  {n:"Wild Horseradish",id:16,s:["spring"]},{n:"Daffodil",id:18,s:["spring"]},{n:"Leek",id:20,s:["spring"]},{n:"Dandelion",id:22,s:["spring"]}]},
  {id:"summer-forage",name:"Summer Foraging",need:3,reward:"30 Summer Seeds",items:[
-  {n:"Grape",s:["summer"],h:"Forage, not the crop"},{n:"Spice Berry",s:["summer"]},{n:"Sweet Pea",s:["summer"]}]},
+  {n:"Grape",id:398,s:["summer"],h:"Forage, not the crop"},{n:"Spice Berry",id:396,s:["summer"]},{n:"Sweet Pea",id:402,s:["summer"]}]},
  {id:"fall-forage",name:"Fall Foraging",need:4,reward:"30 Fall Seeds",items:[
-  {n:"Common Mushroom",s:["fall"],h:"Also Secret Woods in spring"},{n:"Wild Plum",s:["fall"]},{n:"Hazelnut",s:["fall"]},{n:"Blackberry",s:["fall"],h:"Fall 8–11 only"}]},
+  {n:"Common Mushroom",id:404,s:["fall"],h:"Also Secret Woods in spring"},{n:"Wild Plum",id:406,s:["fall"]},{n:"Hazelnut",id:408,s:["fall"]},{n:"Blackberry",id:410,s:["fall"],h:"Fall 8–11 only"}]},
  {id:"winter-forage",name:"Winter Foraging",need:4,reward:"30 Winter Seeds",items:[
-  {n:"Winter Root",s:["winter"],h:"Dig artifact spots"},{n:"Crystal Fruit",s:["winter"]},{n:"Snow Yam",s:["winter"],h:"Dig artifact spots"},{n:"Crocus",s:["winter"]}]},
+  {n:"Winter Root",id:412,s:["winter"],h:"Dig artifact spots"},{n:"Crystal Fruit",id:414,s:["winter"]},{n:"Snow Yam",id:416,s:["winter"],h:"Dig artifact spots"},{n:"Crocus",id:418,s:["winter"]}]},
  {id:"construction",name:"Construction",need:4,reward:"Charcoal Kiln",items:[
-  {n:"Wood",q:99},{n:"Wood",q:99},{n:"Stone",q:99},{n:"Hardwood",q:10,h:"Large stumps / Secret Woods"}]},
+  {n:"Wood",id:388,q:99},{n:"Wood",id:388,q:99},{n:"Stone",id:390,q:99},{n:"Hardwood",id:709,q:10,h:"Large stumps / Secret Woods"}]},
  {id:"exotic-forage",name:"Exotic Foraging",need:5,reward:"5 Autumn's Bounty",items:[
-  {n:"Coconut",h:"Desert"},{n:"Cactus Fruit",h:"Desert"},{n:"Cave Carrot",h:"Mines, break barrels"},{n:"Red Mushroom",h:"Mines / Secret Woods"},
-  {n:"Purple Mushroom",h:"Mines floor 80+"},{n:"Maple Syrup",h:"Tapper on maple"},{n:"Oak Resin",h:"Tapper on oak"},{n:"Pine Tar",h:"Tapper on pine"},
-  {n:"Morel",s:["spring"],h:"Secret Woods"}]}]},
+  {n:"Coconut",id:88,h:"Desert"},{n:"Cactus Fruit",id:90,h:"Desert"},{n:"Cave Carrot",id:78,h:"Mines, break barrels"},{n:"Red Mushroom",id:420,h:"Mines / Secret Woods"},
+  {n:"Purple Mushroom",id:422,h:"Mines floor 80+"},{n:"Maple Syrup",id:724,h:"Tapper on maple"},{n:"Oak Resin",id:725,h:"Tapper on oak"},{n:"Pine Tar",id:726,h:"Tapper on pine"},
+  {n:"Morel",id:257,s:["spring"],h:"Secret Woods"}]}]},
 {id:"pantry",name:"Pantry",unlocks:"Builds the Greenhouse",color:"#d99b2b",bundles:[
  {id:"spring-crops",name:"Spring Crops",need:4,reward:"20 Speed-Gro",items:[
-  {n:"Parsnip",s:["spring"]},{n:"Green Bean",s:["spring"]},{n:"Cauliflower",s:["spring"]},{n:"Potato",s:["spring"]}]},
+  {n:"Parsnip",id:24,s:["spring"]},{n:"Green Bean",id:188,s:["spring"]},{n:"Cauliflower",id:190,s:["spring"]},{n:"Potato",id:192,s:["spring"]}]},
  {id:"summer-crops",name:"Summer Crops",need:4,reward:"Quality Sprinkler",items:[
-  {n:"Tomato",s:["summer"]},{n:"Hot Pepper",s:["summer"]},{n:"Blueberry",s:["summer"]},{n:"Melon",s:["summer"]}]},
+  {n:"Tomato",id:256,s:["summer"]},{n:"Hot Pepper",id:260,s:["summer"]},{n:"Blueberry",id:258,s:["summer"]},{n:"Melon",id:254,s:["summer"]}]},
  {id:"fall-crops",name:"Fall Crops",need:4,reward:"Bee House",items:[
-  {n:"Corn",s:["summer","fall"]},{n:"Eggplant",s:["fall"]},{n:"Pumpkin",s:["fall"]},{n:"Yam",s:["fall"]}]},
+  {n:"Corn",id:270,s:["summer","fall"]},{n:"Eggplant",id:272,s:["fall"]},{n:"Pumpkin",id:276,s:["fall"]},{n:"Yam",id:280,s:["fall"]}]},
  {id:"quality-crops",name:"Quality Crops",need:3,reward:"3 Preserves Jars",note:"Gold quality only",items:[
-  {n:"Parsnip",q:5,s:["spring"],h:"Gold"},{n:"Melon",q:5,s:["summer"],h:"Gold"},{n:"Pumpkin",q:5,s:["fall"],h:"Gold"},{n:"Corn",q:5,s:["summer","fall"],h:"Gold"}]},
+  {n:"Parsnip",id:24,mq:2,q:5,s:["spring"],h:"Gold"},{n:"Melon",id:254,mq:2,q:5,s:["summer"],h:"Gold"},{n:"Pumpkin",id:276,mq:2,q:5,s:["fall"],h:"Gold"},{n:"Corn",id:270,mq:2,q:5,s:["summer","fall"],h:"Gold"}]},
  {id:"animal",name:"Animal",need:5,reward:"Cheese Press",items:[
-  {n:"Large Milk"},{n:"Large Brown Egg"},{n:"Large Egg",h:"White"},{n:"Large Goat Milk"},{n:"Wool",h:"Sheep or rabbit"},{n:"Duck Egg"}]},
+  {n:"Large Milk",id:186},{n:"Large Brown Egg",id:182},{n:"Large Egg",id:174,h:"White"},{n:"Large Goat Milk",id:438},{n:"Wool",id:440,h:"Sheep or rabbit"},{n:"Duck Egg",id:442}]},
  {id:"artisan",name:"Artisan",need:6,reward:"Keg",items:[
-  {n:"Truffle Oil"},{n:"Cloth"},{n:"Goat Cheese"},{n:"Cheese"},{n:"Honey"},{n:"Jelly"},
-  {n:"Apple",h:"Fruit tree, fall"},{n:"Apricot",h:"Fruit tree, spring"},{n:"Orange",h:"Fruit tree, summer"},
-  {n:"Peach",h:"Fruit tree, summer"},{n:"Pomegranate",h:"Fruit tree, fall"},{n:"Cherry",h:"Fruit tree, spring"}]}]},
+  {n:"Truffle Oil",id:432},{n:"Cloth",id:428},{n:"Goat Cheese",id:426},{n:"Cheese",id:424},{n:"Honey",id:340},{n:"Jelly",id:344},
+  {n:"Apple",id:613,h:"Fruit tree, fall"},{n:"Apricot",id:634,h:"Fruit tree, spring"},{n:"Orange",id:635,h:"Fruit tree, summer"},
+  {n:"Peach",id:636,h:"Fruit tree, summer"},{n:"Pomegranate",id:637,h:"Fruit tree, fall"},{n:"Cherry",id:638,h:"Fruit tree, spring"}]}]},
 {id:"fishtank",name:"Fish Tank",unlocks:"Clears the glittering boulder — panning",color:"#3d8fbf",bundles:[
  {id:"river-fish",name:"River Fish",need:4,reward:"30 Bait",items:[
-  {n:"Sunfish",s:["spring","summer"],h:"River, 6am–7pm, sunny"},{n:"Catfish",s:["spring","fall"],h:"River, rainy"},
-  {n:"Shad",s:["spring","summer","fall"],h:"River, rainy, 9am–2am"},{n:"Tiger Trout",s:["fall","winter"],h:"River, 6am–7pm"}]},
+  {n:"Sunfish",id:145,s:["spring","summer"],h:"River, 6am–7pm, sunny"},{n:"Catfish",id:143,s:["spring","fall"],h:"River, rainy"},
+  {n:"Shad",id:706,s:["spring","summer","fall"],h:"River, rainy, 9am–2am"},{n:"Tiger Trout",id:699,s:["fall","winter"],h:"River, 6am–7pm"}]},
  {id:"lake-fish",name:"Lake Fish",need:4,reward:"Dressed Spinner",items:[
-  {n:"Largemouth Bass",h:"Mountain lake, 6am–7pm"},{n:"Carp",h:"Mountain lake / sewers"},{n:"Bullhead",h:"Mountain lake"},
-  {n:"Sturgeon",s:["summer","winter"],h:"Mountain lake, 6am–7pm"}]},
+  {n:"Largemouth Bass",id:136,h:"Mountain lake, 6am–7pm"},{n:"Carp",id:142,h:"Mountain lake / sewers"},{n:"Bullhead",id:700,h:"Mountain lake"},
+  {n:"Sturgeon",id:698,s:["summer","winter"],h:"Mountain lake, 6am–7pm"}]},
  {id:"ocean-fish",name:"Ocean Fish",need:4,reward:"5 Warp Totem: Beach",items:[
-  {n:"Sardine",s:["spring","fall","winter"],h:"Ocean, 6am–7pm"},{n:"Tuna",s:["summer","winter"],h:"Ocean, 6am–7pm"},
-  {n:"Red Snapper",s:["summer","fall"],h:"Ocean, rainy"},{n:"Tilapia",s:["summer","fall"],h:"Ocean, 6am–2pm"}]},
+  {n:"Sardine",id:131,s:["spring","fall","winter"],h:"Ocean, 6am–7pm"},{n:"Tuna",id:130,s:["summer","winter"],h:"Ocean, 6am–7pm"},
+  {n:"Red Snapper",id:150,s:["summer","fall"],h:"Ocean, rainy"},{n:"Tilapia",id:701,s:["summer","fall"],h:"Ocean, 6am–2pm"}]},
  {id:"night-fish",name:"Night Fishing",need:3,reward:"Small Glow Ring",items:[
-  {n:"Walleye",s:["fall"],h:"Rainy, 12pm–2am"},{n:"Bream",h:"River, 6pm–2am"},{n:"Eel",s:["spring","fall"],h:"Ocean, rainy, 4pm–2am"}]},
+  {n:"Walleye",id:140,s:["fall"],h:"Rainy, 12pm–2am"},{n:"Bream",id:132,h:"River, 6pm–2am"},{n:"Eel",id:148,s:["spring","fall"],h:"Ocean, rainy, 4pm–2am"}]},
  {id:"crab-pot",name:"Crab Pot",need:5,reward:"3 Crab Pots",items:[
-  {n:"Lobster"},{n:"Crayfish"},{n:"Crab"},{n:"Cockle"},{n:"Mussel"},{n:"Shrimp"},{n:"Snail"},{n:"Periwinkle"},{n:"Oyster"},{n:"Clam"}]},
+  {n:"Lobster",id:715},{n:"Crayfish",id:716},{n:"Crab",id:717},{n:"Cockle",id:718},{n:"Mussel",id:719},{n:"Shrimp",id:720},{n:"Snail",id:721},{n:"Periwinkle",id:722},{n:"Oyster",id:723},{n:"Clam",id:372}]},
  {id:"specialty-fish",name:"Specialty Fish",need:4,reward:"5 Dish O' The Sea",items:[
-  {n:"Pufferfish",s:["summer"],h:"Ocean, sunny, 12pm–4pm"},{n:"Ghostfish",h:"Mines floor 20 & 60"},
-  {n:"Sandfish",h:"Desert pond, 6am–8pm"},{n:"Woodskip",h:"Secret Woods pond"}]}]},
+  {n:"Pufferfish",id:128,s:["summer"],h:"Ocean, sunny, 12pm–4pm"},{n:"Ghostfish",id:156,h:"Mines floor 20 & 60"},
+  {n:"Sandfish",id:164,h:"Desert pond, 6am–8pm"},{n:"Woodskip",id:734,h:"Secret Woods pond"}]}]},
 {id:"boiler",name:"Boiler Room",unlocks:"Repairs the Minecarts",color:"#c4552e",bundles:[
- {id:"blacksmith",name:"Blacksmith's",need:3,reward:"Furnace",items:[{n:"Copper Bar"},{n:"Iron Bar"},{n:"Gold Bar"}]},
+ {id:"blacksmith",name:"Blacksmith's",need:3,reward:"Furnace",items:[{n:"Copper Bar",id:334},{n:"Iron Bar",id:335},{n:"Gold Bar",id:336}]},
  {id:"geologist",name:"Geologist's",need:4,reward:"5 Omni Geodes",items:[
-  {n:"Quartz",h:"Mines"},{n:"Earth Crystal",h:"Mines 1–39"},{n:"Frozen Tear",h:"Mines 40–79"},{n:"Fire Quartz",h:"Mines 80–119"}]},
+  {n:"Quartz",id:80,h:"Mines"},{n:"Earth Crystal",id:86,h:"Mines 1–39"},{n:"Frozen Tear",id:84,h:"Mines 40–79"},{n:"Fire Quartz",id:82,h:"Mines 80–119"}]},
  {id:"adventurer",name:"Adventurer's",need:2,reward:"Small Magnet Ring",items:[
-  {n:"Slime",q:99},{n:"Bat Wing",q:10},{n:"Solar Essence"},{n:"Void Essence",h:"Mines 80+"}]}]},
+  {n:"Slime",id:766,q:99},{n:"Bat Wing",id:767,q:10},{n:"Solar Essence",id:768},{n:"Void Essence",id:769,h:"Mines 80+"}]}]},
 {id:"bulletin",name:"Bulletin Board",unlocks:"+1 heart with every villager",color:"#8a63c4",bundles:[
  {id:"chefs",name:"Chef's",need:6,reward:"3 Pink Cake",items:[
-  {n:"Maple Syrup",h:"Tapper on maple"},{n:"Fiddlehead Fern",s:["summer"],h:"Secret Woods"},{n:"Truffle",h:"Pigs, outdoors"},
-  {n:"Poppy",s:["summer"]},{n:"Maki Roll",h:"Cook or buy at Saloon"},{n:"Fried Egg",h:"Cook"}]},
+  {n:"Maple Syrup",id:724,h:"Tapper on maple"},{n:"Fiddlehead Fern",id:259,s:["summer"],h:"Secret Woods"},{n:"Truffle",id:430,h:"Pigs, outdoors"},
+  {n:"Poppy",id:376,s:["summer"]},{n:"Maki Roll",id:228,h:"Cook or buy at Saloon"},{n:"Fried Egg",id:194,h:"Cook"}]},
  {id:"dye",name:"Dye",need:6,reward:"Seed Maker",items:[
-  {n:"Red Mushroom",h:"Mines / Secret Woods"},{n:"Sea Urchin",h:"Beach tide pools"},{n:"Sunflower",s:["summer","fall"]},
-  {n:"Duck Feather"},{n:"Aquamarine",h:"Mines 40–79"},{n:"Red Cabbage",s:["summer"],h:"Seeds sold year 2"}]},
+  {n:"Red Mushroom",id:420,h:"Mines / Secret Woods"},{n:"Sea Urchin",id:397,h:"Beach tide pools"},{n:"Sunflower",id:421,s:["summer","fall"]},
+  {n:"Duck Feather",id:444},{n:"Aquamarine",id:62,h:"Mines 40–79"},{n:"Red Cabbage",id:266,s:["summer"],h:"Seeds sold year 2"}]},
  {id:"field-research",name:"Field Research",need:4,reward:"Recycling Machine",items:[
-  {n:"Purple Mushroom",h:"Mines floor 80+"},{n:"Nautilus Shell",s:["winter"],h:"Beach"},{n:"Chub",h:"River / mountain lake"},{n:"Frozen Geode",h:"Mines 40–79"}]},
+  {n:"Purple Mushroom",id:422,h:"Mines floor 80+"},{n:"Nautilus Shell",id:392,s:["winter"],h:"Beach"},{n:"Chub",id:702,h:"River / mountain lake"},{n:"Frozen Geode",id:536,h:"Mines 40–79"}]},
  {id:"fodder",name:"Fodder",need:3,reward:"Heater",items:[
-  {n:"Wheat",q:10,s:["summer","fall"]},{n:"Hay",q:10},{n:"Apple",q:3,h:"Fruit tree, fall"}]},
+  {n:"Wheat",id:262,q:10,s:["summer","fall"]},{n:"Hay",id:178,q:10},{n:"Apple",id:613,q:3,h:"Fruit tree, fall"}]},
  {id:"enchanters",name:"Enchanter's",need:4,reward:"5 Gold Bars",items:[
-  {n:"Oil",h:"Oil Maker or Pierre's"},{n:"Wine"},{n:"Rabbit's Foot",h:"Rabbits, high hearts"},{n:"Pomegranate",h:"Fruit tree, fall"}]}]},
+  {n:"Oak Resin",id:725,h:"Tapper on oak"},{n:"Wine",id:348,h:"Keg, 7 days"},{n:"Rabbit's Foot",id:446,h:"Rabbits, high hearts"},{n:"Pomegranate",id:637,h:"Fruit tree, fall"}]}]},
 {id:"vault",name:"Vault",unlocks:"Repairs the Bus — Calico Desert",color:"#c9a227",bundles:[
- {id:"v1",name:"2,500g",need:1,items:[{n:"2,500g"}]},
- {id:"v2",name:"5,000g",need:1,items:[{n:"5,000g"}]},
- {id:"v3",name:"10,000g",need:1,items:[{n:"10,000g"}]},
- {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g"}]}]}
+ {id:"v1",name:"2,500g",need:1,items:[{n:"2,500g",gold:2500}]},
+ {id:"v2",name:"5,000g",need:1,items:[{n:"5,000g",gold:5000}]},
+ {id:"v3",name:"10,000g",need:1,items:[{n:"10,000g",gold:10000}]},
+ {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
+
+const BUILD="2026-07-25a";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
-const KEY="cc-progress-v1";
+const KEY="cc-progress-v1", META="cc-meta-v1";
+
+// Flat slot index — stable order used by the backup codec.
+const FLAT=[]; ROOMS.forEach(r=>r.bundles.forEach(b=>b.items.forEach((_,i)=>FLAT.push(K(b.id,i)))));
+const SLOT_COUNT=FLAT.length;
+const FLAT_IX=new Map(FLAT.map((k,i)=>[k,i]));
+// Layout fingerprint: a code from a build with a different slot layout must be
+// refused, never silently misapplied.
+const FINGERPRINT=(()=>{const s=ALL.map(b=>b.id).join(",")+"|"+SLOT_COUNT;
+  let h=5381; for(let i=0;i<s.length;i++) h=((h*33)^s.charCodeAt(i))>>>0; return h&0xffff;})();
 
 let checked=new Set(), tab="crafts", season="all";
-const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let backend="—", lastWrite=null, writeCount=0, lastBytes=0, saveBlocked=false, note="";
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const standalone=()=>window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
+
+function parseSet(v){
+  try{
+    const a=JSON.parse(v);
+    if(!Array.isArray(a)) throw new Error("not an array");
+    return new Set(a.filter(x=>typeof x==="string"));
+  }catch(e){
+    // Never silently return empty and let the next tap overwrite good data.
+    saveBlocked=true;
+    try{ localStorage.setItem(META,JSON.stringify({corrupt:String(v).slice(0,4000),at:Date.now()})); }catch(_){}
+    return new Set();
+  }
+}
 
 async function load(){
-  try{ if(window.storage){ const r=await window.storage.get(KEY); if(r&&r.value) return new Set(JSON.parse(r.value)); } }catch(e){}
-  try{ const v=localStorage.getItem(KEY); if(v) return new Set(JSON.parse(v)); }catch(e){}
+  try{ if(window.storage){ const r=await window.storage.get(KEY);
+        if(r&&r.value){ backend="window.storage"; return parseSet(r.value); } } }catch(e){}
+  try{
+    const v=localStorage.getItem(KEY);
+    backend="localStorage";
+    if(v!=null) return parseSet(v);
+  }catch(e){ backend="unavailable"; }
   return new Set();
 }
+
 async function save(){
+  if(saveBlocked){ renderStatus(); return; }
   const s=JSON.stringify([...checked]); let ok=false;
-  try{ if(window.storage){ await window.storage.set(KEY,s); ok=true; } }catch(e){}
-  try{ localStorage.setItem(KEY,s); ok=true; }catch(e){}
-  if(!ok) document.getElementById("note").textContent="Saving is unavailable — progress will reset when you close this.";
+  try{ if(window.storage){ await window.storage.set(KEY,s); ok=true; backend="window.storage"; } }catch(e){}
+  try{ localStorage.setItem(KEY,s); ok=true; if(backend!=="window.storage") backend="localStorage"; }catch(e){}
+  if(ok){ lastWrite=new Date(); writeCount++; lastBytes=s.length; }
+  else { backend="unavailable"; }
+  renderStatus();
 }
 
-const stat=b=>{const have=b.items.filter((_,i)=>checked.has(K(b.id,i))).length;return{have,done:have>=b.need};};
+function renderStatus(){
+  const el=document.getElementById("note"); if(!el) return;
+  if(saveBlocked){
+    el.innerHTML='<span class="bad">Not saving</span> — stored progress was unreadable. Open Storage &amp; backup.';
+    return;
+  }
+  if(backend==="unavailable"){
+    el.innerHTML='<span class="bad">Saving unavailable</span> — progress will reset when you close this.';
+    return;
+  }
+  const t=lastWrite?lastWrite.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"not yet";
+  el.textContent=`${checked.size} checked · saved ${t} · ${backend} · ${standalone()?"home screen":"browser tab"} · build ${BUILD}`;
+}
+
+/* ---- backup / restore code -------------------------------------------------
+   magic 'S' | version | fingerprint(2) | flags | 17-byte slot bitmap  -> ~30 chars */
+const b64u=u8=>btoa(Array.from(u8,c=>String.fromCharCode(c)).join(""))
+  .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+function unb64u(s){
+  try{
+    const t=s.replace(/[^A-Za-z0-9\-_]/g,"").replace(/-/g,"+").replace(/_/g,"/");
+    const bin=atob(t), u=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    return u;
+  }catch(e){ return null; }
+}
+function encodeCode(set){
+  const bits=new Uint8Array(Math.ceil(SLOT_COUNT/8));
+  set.forEach(k=>{const i=FLAT_IX.get(k); if(i!=null) bits[i>>3]|=1<<(i&7);});
+  const out=new Uint8Array(5+bits.length);
+  out[0]=83; out[1]=1; out[2]=FINGERPRINT&255; out[3]=FINGERPRINT>>8; out[4]=1;
+  out.set(bits,5);
+  return b64u(out);
+}
+function decodeCode(str){
+  const b=unb64u(String(str||""));
+  if(!b||b.length<5||b[0]!==83) throw new Error("That doesn't look like a backup code.");
+  if(b[1]!==1) throw new Error("That code came from a different version of the app.");
+  if((b[2]|(b[3]<<8))!==FINGERPRINT)
+    throw new Error("That code was made by a different build. Update the app on both devices, then make a fresh code.");
+  const bits=b.subarray(5), s=new Set();
+  for(let i=0;i<SLOT_COUNT;i++) if((bits[i>>3]>>(i&7))&1) s.add(FLAT[i]);
+  return s;
+}
+
+// Single seam for "is this slot satisfied". Phase 2 unions in donated-from-save here.
+const isOn=k=>checked.has(k);
+const stat=b=>{const have=b.items.filter((_,i)=>isOn(K(b.id,i))).length;return{have,done:have>=b.need};};
 const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(b=>stat(b).done).length,total:bs.length};};
 
 function renderNav(){
@@ -228,7 +326,7 @@ function bundleCard(b,color){
   const sub=st.done?(b.reward?"Reward: "+b.reward:"Complete")
     :(partial?"Any "+short+" more of these "+b.items.length:short+" to go")+(b.note?" · "+b.note:"");
   const slots=b.items.map((it,i)=>{
-    const id=K(b.id,i),on=checked.has(id);
+    const id=K(b.id,i),on=isOn(id);
     return '<button class="slot'+(st.done&&!on?" moot":"")+'" data-id="'+id+'" aria-pressed="'+on+'">'+
       '<span class="name">'+(on?"✓ ":"")+esc(it.n)+(it.q?'<span class="qty"> ×'+it.q+'</span>':"")+'</span>'+
       (it.h?'<span class="hint">'+esc(it.h)+'</span>':"")+'</button>';
@@ -244,7 +342,7 @@ function renderNeeded(){
   const rows=[];
   for(const b of ALL){
     const st=stat(b); if(st.done) continue;
-    const items=b.items.map((it,i)=>({...it,id:K(b.id,i)})).filter(it=>!checked.has(it.id))
+    const items=b.items.map((it,i)=>({...it,_k:K(b.id,i)})).filter(it=>!isOn(it._k))
       .filter(it=>season==="all"||(season==="any"?!it.s:(it.s||[]).includes(season)));
     if(items.length) rows.push({b,items,short:b.need-st.have});
   }
@@ -258,22 +356,104 @@ function renderNeeded(){
     '</section>';
 }
 
+let canary="not run yet", persisted="unknown";
+
+function renderStorage(){
+  const raw=(()=>{ try{ return localStorage.getItem(KEY); }catch(e){ return null; } })();
+  const meta=(()=>{ try{ return JSON.parse(localStorage.getItem(META)||"null"); }catch(e){ return null; } })();
+  return '<section class="plaque panel"><h2>Storage &amp; backup</h2>'+
+    '<p>If progress ever disappears, the numbers below say why. Read them out and they pin the cause.</p>'+
+    (saveBlocked?'<div class="warn">Stored progress could not be read, so the app has <b>stopped saving</b> to avoid '+
+      'overwriting it. The unreadable value is kept below. Tap <b>Discard and start saving</b> once you\'ve looked.</div>':'')+
+    '<h3>Right now</h3><div class="kv">'+
+      '<b>build</b>'+esc(BUILD)+'<br>'+
+      '<b>opened from</b>'+(standalone()?'<span class="ok">home screen app</span>':'browser tab')+'<br>'+
+      '<b>navigator.standalone</b>'+String(window.navigator.standalone)+'<br>'+
+      '<b>display-mode</b>'+(matchMedia("(display-mode: standalone)").matches?"standalone":"browser")+'<br>'+
+      '<b>backend</b>'+esc(backend)+'<br>'+
+      '<b>checks held</b>'+checked.size+'<br>'+
+      '<b>stored bytes</b>'+(raw==null?"nothing stored":raw.length)+'<br>'+
+      '<b>writes this visit</b>'+writeCount+'<br>'+
+      '<b>last write</b>'+(lastWrite?esc(lastWrite.toLocaleTimeString()):"none")+'<br>'+
+      '<b>persistent storage</b>'+esc(persisted)+'<br>'+
+      '<b>write test</b>'+esc(canary)+
+    '</div>'+
+    '<button data-act="canary">Run write test</button>'+
+    '<button data-act="persist">Request persistent storage</button>'+
+    '<h3>Backup code</h3>'+
+    '<p>A short code holding all '+SLOT_COUNT+' checkboxes. Keep it in Notes — it restores your progress on any device, even if the browser clears its data.</p>'+
+    '<textarea id="codeout" rows="2" readonly>'+esc(encodeCode(checked))+'</textarea>'+
+    '<button data-act="copy">Copy code</button>'+
+    '<h3>Restore from a code</h3>'+
+    '<textarea id="codein" rows="2" placeholder="Paste a backup code here"></textarea>'+
+    '<button data-act="restore">Restore</button>'+
+    '<div id="restoremsg"></div>'+
+    (meta&&meta.corrupt?'<h3>Unreadable value that was found</h3><div class="kv">'+esc(String(meta.corrupt).slice(0,300))+'</div>':'')+
+    (saveBlocked?'<button data-act="unblock">Discard and start saving</button>':'')+
+    '<h3>Danger zone</h3><div class="danger"><button data-act="clear">Clear every check</button></div>'+
+    '</section>';
+}
+
 function render(){
   renderNav();
   const main=document.getElementById("main");
-  if(tab==="needed"){ main.innerHTML=renderNeeded(); return; }
+  if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
+  if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
   const r=ROOMS.find(x=>x.id===tab);
   main.innerHTML='<div class="roomhead"><h2 style="color:'+r.color+'">'+esc(r.name)+'</h2><p>'+esc(r.unlocks)+'</p></div>'+
     '<div class="grid">'+r.bundles.map(b=>bundleCard(b,r.color)).join("")+'</div>';
+  renderStatus();
 }
+
+const ACTIONS={
+  storage(){ tab="storage"; render(); window.scrollTo(0,0); },
+  canary(){
+    try{
+      const k="cc-canary", v=String(Date.now());
+      localStorage.setItem(k,v);
+      const back=localStorage.getItem(k);
+      localStorage.removeItem(k);
+      canary = back===v ? "wrote and read back OK" : "read back the wrong value";
+    }catch(e){ canary="FAILED: "+e.name; }
+    render();
+  },
+  persist(){
+    if(!navigator.storage||!navigator.storage.persist){ persisted="not supported here"; render(); return; }
+    navigator.storage.persist().then(g=>{ persisted=g?"granted":"denied"; render(); });
+  },
+  copy(){
+    const el=document.getElementById("codeout"); if(!el) return;
+    el.select(); el.setSelectionRange(0,999);
+    const done=()=>{ const b=document.querySelector('[data-act="copy"]'); if(b) b.textContent="Copied"; };
+    if(navigator.clipboard) navigator.clipboard.writeText(el.value).then(done,()=>{try{document.execCommand("copy");done();}catch(e){}});
+    else { try{ document.execCommand("copy"); done(); }catch(e){} }
+  },
+  restore(){
+    const el=document.getElementById("codein"), msg=document.getElementById("restoremsg");
+    try{
+      const s=decodeCode(el.value);
+      checked=s; saveBlocked=false; save(); render();
+      const m=document.getElementById("restoremsg");
+      if(m) m.innerHTML='<p class="ok">Restored '+s.size+' checks.</p>';
+    }catch(err){ if(msg) msg.innerHTML='<p class="bad">'+esc(err.message)+'</p>'; }
+  },
+  unblock(){ saveBlocked=false; try{ localStorage.removeItem(META); }catch(e){} save(); render(); },
+  clear(){
+    if(!confirm("Clear every check? Make a backup code first if you might want this back.")) return;
+    checked=new Set(); saveBlocked=false; save(); render();
+  }
+};
 
 document.addEventListener("click",e=>{
   const t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.act){ const fn=ACTIONS[t.dataset.act]; if(fn) fn(); return; }
   if(t.dataset.tab){ tab=t.dataset.tab; render(); window.scrollTo(0,0); return; }
   if(t.dataset.season){ season=t.dataset.season; render(); return; }
   if(t.dataset.id){ checked.has(t.dataset.id)?checked.delete(t.dataset.id):checked.add(t.dataset.id); save(); render(); return; }
-  if(t.id==="reset"&&confirm("Clear every check and start a new save?")){ checked=new Set(); save(); render(); }
 });
+
+if(navigator.storage&&navigator.storage.persisted)
+  navigator.storage.persisted().then(p=>{ persisted=p?"yes":"no"; });
 
 load().then(s=>{checked=s;render();});
 
