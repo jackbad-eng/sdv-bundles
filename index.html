@@ -219,7 +219,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-28b";
+const BUILD="2026-07-28c";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -567,11 +567,12 @@ function parseSave(text){
   const owned=ownedForSlots(parseOwned(text));
   const inv=parseInv(text);
   const quests=parseQuests(text);
+  const social=parseSocial(text);
 
   return {v:1,at:Date.now(),src:"file",
           date:{season:season,day:+day,year:+year},
           money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
-          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,quests,
+          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,quests,social,
           ownedCount:Object.keys(owned).length,
           verify:verifyIds(byName)};
 }
@@ -723,7 +724,7 @@ const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(
 const MODES=[
   {id:"today", label:"Today",   tabs:["now"]},
   {id:"cc",    label:"Bundles", tabs:["inv","crafts","pantry","fishtank","boiler","bulletin","vault","needed"]},
-  {id:"town",  label:"Town",    tabs:["quests"]}
+  {id:"town",  label:"Town",    tabs:["quests","people"]}
 ];
 const MODE_OF={}; MODES.forEach(m=>m.tabs.forEach(t=>MODE_OF[t]=m.id));
 const lastTab={today:"now", cc:"crafts", town:"quests", coll:"mus"};
@@ -741,7 +742,8 @@ function modeBadge(id){
   if(id==="cc") return ' <span class="n">'+ALL.filter(b=>stat(b).done).length+'/'+ALL.length+'</span>';
   if(id==="town"){
     const qs=(SAVE&&SAVE.quests)||[], have=invById();
-    const n=qs.filter(q=>q.done||(q.kind==="D"&&(have[q.item]||0)>=q.need)).length;
+    let n=qs.filter(q=>q.done||(q.kind==="D"&&(have[q.item]||0)>=q.need)).length;
+    if(SAVE&&SAVE.social) n+=SAVE.social.filter(p=>BDAY[p.name]&&untilBday(BDAY[p.name])<=1).length;
     return n?' <span class="n">'+n+'</span>':'';
   }
   return "";
@@ -842,6 +844,77 @@ function renderNow(){
   if(rest) html+='<h3>Not yet</h3><p>'+rest+' more slot'+(rest===1?"":"s")+
     ' are out of season or have no deadline — see Still needed.</p>';
   return html+'</section>';
+}
+
+/* Birthdays are static content data, extracted once from the save's NPC records.
+   Encoded as seasonIndex + 2-digit day — note spring/summer share a first letter,
+   so an initial would collide. */
+const BDAY={Abigail:"213",Alex:"113",Caroline:"307",Clint:"326",Demetrius:"119",Dwarf:"122",
+Elliott:"205",Emily:"027",Evelyn:"320",George:"224",Gus:"108",Haley:"014",Harvey:"314",Jas:"104",
+Jodi:"211",Krobus:"301",Leah:"323",Lewis:"007",Linus:"303",Marnie:"218",Maru:"110",Pam:"018",
+Penny:"202",Pierre:"026",Robin:"221",Sam:"117",Sandy:"215",Sebastian:"310",Shane:"020",
+Vincent:"010",Willy:"124",Wizard:"317"};
+
+const dayIx=(sIx,d)=>sIx*28+(d-1);
+function untilBday(code){
+  const mine=dayIx(SEASON_IX[SAVE.date.season],SAVE.date.day);
+  return (dayIx(+code[0],+code.slice(1))-mine+112)%112;
+}
+const bdayText=c=>["spring","summer","fall","winter"][+c[0]]+" "+(+c.slice(1));
+
+function parseSocial(text){
+  const rows=attrRows(text,"social","f");
+  if(!rows) return null;
+  return rows.map(r=>({name:r.n,pts:+r.p||0,giftsWeek:+r.gw||0,giftsToday:+r.gt||0,
+                       talked:r.t==="1",status:r.st||"Friendly"}));
+}
+
+let peoQ="";
+function peopleRows(){
+  const q=peoQ.trim().toLowerCase();
+  return (SAVE.social||[]).filter(p=>!q||p.name.toLowerCase().indexOf(q)>=0)
+    .map(p=>({...p,bday:BDAY[p.name]||null,
+              until:BDAY[p.name]?untilBday(BDAY[p.name]):999}))
+    .sort((a,b)=>a.until-b.until||b.pts-a.pts);
+}
+
+function renderPeople(){
+  if(!SAVE) return '<section class="plaque panel"><h2>Villagers</h2>'+
+    '<p>Link your save to see hearts, gift slots and birthdays.</p>'+
+    '<button data-act="importsave">Import a save</button></section>';
+  if(!SAVE.social) return '<section class="plaque panel"><h2>Villagers</h2>'+
+    '<p>This save was linked before villagers were included. Tap <b>Refresh save</b>.</p>'+
+    '<button data-act="refresh">Refresh save</button></section>';
+  const rows=peopleRows();
+  const untalked=(SAVE.social||[]).filter(p=>!p.talked).length;
+  return '<section class="plaque panel"><h2>Villagers</h2>'+
+    '<p class="kv">'+SAVE.social.length+' known · '+untalked+' not spoken to today · '+
+      esc(fmtDate(SAVE.date))+'</p>'+
+    '<input id="peoq" type="search" placeholder="Search villagers" value="'+esc(peoQ)+'">'+
+    '<div id="peolist">'+peopleListHtml(rows)+'</div></section>';
+}
+
+function peopleListHtml(rows){
+  if(!rows.length) return '<p>Nobody matching.</p>';
+  return rows.map(p=>{
+    const hearts=Math.floor(p.pts/250);
+    const soon=p.until<=2;
+    const bd=p.bday
+      ? (p.until===0?"<b>Birthday today</b>"
+        :p.until===1?"<b>Birthday tomorrow</b>"
+        :"Birthday "+bdayText(p.bday)+" · "+p.until+"d")
+      : "";
+    const slots=2-p.giftsWeek;
+    return '<div class="need'+(soon?' urg-ready':'')+'" style="border-left:4px solid '+
+      (soon?"#5d8c2f":hearts>=8?"#c9a227":"#b09468")+'">'+
+      '<div class="t">'+esc(p.name)+
+        ' <span class="m">'+"♥".repeat(Math.min(hearts,10))+" "+hearts+'</span>'+
+        (p.status!=="Friendly"?' <span class="m">'+esc(p.status)+'</span>':"")+'</div>'+
+      '<div class="items"><i>'+bd+(bd?" · ":"")+
+        (p.talked?"talked today":"<b>not talked to today</b>")+" · "+
+        (slots>0?slots+" gift slot"+(slots===1?"":"s")+" left this week":"no gifts left this week")+
+      '</i></div></div>';
+  }).join("");
 }
 
 /* Quest deliveries accept ANY quality, so they join against the raw inventory —
@@ -1099,6 +1172,7 @@ function render(){
   if(tab==="now"){ main.innerHTML=renderNow(); renderStatus(); return; }
   if(tab==="inv"){ main.innerHTML=renderInv(); renderStatus(); return; }
   if(tab==="quests"){ main.innerHTML=renderQuests(); renderStatus(); return; }
+  if(tab==="people"){ main.innerHTML=renderPeople(); renderStatus(); return; }
   if(tab==="import"){ main.innerHTML=renderImport(); renderStatus(); return; }
   if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
   if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
@@ -1219,6 +1293,11 @@ document.addEventListener("input",e=>{
     invQ=e.target.value;
     const list=document.getElementById("invlist");
     if(list) list.innerHTML=invListHtml(invRows());
+  }
+  if(e.target&&e.target.id==="peoq"){
+    peoQ=e.target.value;
+    const list=document.getElementById("peolist");
+    if(list) list.innerHTML=peopleListHtml(peopleRows());
   }
 });
 
