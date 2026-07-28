@@ -219,7 +219,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-28a";
+const BUILD="2026-07-28b";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -413,20 +413,37 @@ function parseOwned(text){
   return tally;
 }
 
+/* Generic reader for the flat attribute blocks the sync file emits
+   (<inv><i .../></inv>, <quests><q .../></quests>, …). */
+const unesc=s=>s.replace(/&lt;/g,"<").replace(/&gt;/g,">")
+                .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,"&");
+function attrsOf(s){
+  const o={}, re=/([a-zA-Z]+)="([^"]*)"/g; let m;
+  while((m=re.exec(s))) o[m[1]]=unesc(m[2]);
+  return o;
+}
+function attrRows(text,wrap,tag){
+  const a=text.indexOf("<"+wrap+">"); if(a<0) return null;
+  const blk=text.slice(a,text.indexOf("</"+wrap+">",a));
+  const re=new RegExp("<"+tag+" ([^>]*?)\\/>","g"), rows=[]; let m;
+  while((m=re.exec(blk))) rows.push(attrsOf(m[1]));
+  return rows;
+}
+
 // Full inventory listing, for browsing/search. Independent of bundle matching.
 function parseInv(text){
-  const a=text.indexOf("<inv>"); if(a<0) return null;
-  const blk=text.slice(a,text.indexOf("</inv>",a));
-  const re=/<i ([^>]*?)\/>/g, rows=[]; let m;
-  const attr=(s,k)=>{ const x=new RegExp(k+'="([^"]*)"').exec(s); return x?x[1]:""; };
-  const un=s=>s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&amp;/g,"&");
-  while((m=re.exec(blk))){
-    const a2=m[1];
-    rows.push({n:un(attr(a2,"n")),id:attr(a2,"id"),q:+attr(a2,"q")||0,
-               s:+attr(a2,"s")||1,w:un(attr(a2,"w")),
-               big:attr(a2,"b")==="1",type:attr(a2,"t")||"Object"});
-  }
-  return rows;
+  const rows=attrRows(text,"inv","i");
+  if(!rows) return null;
+  return rows.map(r=>({n:r.n,id:r.id,q:+r.q||0,s:+r.s||1,w:r.w,
+                       big:r.b==="1",type:r.t||"Object"}));
+}
+
+function parseQuests(text){
+  const rows=attrRows(text,"quests","q");
+  if(!rows) return null;
+  return rows.map(r=>({id:r.id,kind:r.k,title:r.t,objective:r.o,desc:r.d,
+                       gold:+r.g||0,target:r.tg,item:r.it,need:+r.n||0,
+                       done:r.c==="1"}));
 }
 
 // Per-slot owned count, honouring each slot's minimum quality (gold >= silver).
@@ -549,11 +566,12 @@ function parseSave(text){
 
   const owned=ownedForSlots(parseOwned(text));
   const inv=parseInv(text);
+  const quests=parseQuests(text);
 
   return {v:1,at:Date.now(),src:"file",
           date:{season:season,day:+day,year:+year},
           money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
-          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,
+          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,quests,
           ownedCount:Object.keys(owned).length,
           verify:verifyIds(byName)};
 }
@@ -704,7 +722,8 @@ const roomProg=id=>{const bs=ALL.filter(b=>b.roomId===id);return{done:bs.filter(
    unusable on a phone. `tab` stays the single source of truth; mode is derived. */
 const MODES=[
   {id:"today", label:"Today",   tabs:["now"]},
-  {id:"cc",    label:"Bundles", tabs:["inv","crafts","pantry","fishtank","boiler","bulletin","vault","needed"]}
+  {id:"cc",    label:"Bundles", tabs:["inv","crafts","pantry","fishtank","boiler","bulletin","vault","needed"]},
+  {id:"town",  label:"Town",    tabs:["quests"]}
 ];
 const MODE_OF={}; MODES.forEach(m=>m.tabs.forEach(t=>MODE_OF[t]=m.id));
 const lastTab={today:"now", cc:"crafts", town:"quests", coll:"mus"};
@@ -720,6 +739,11 @@ function modeBadge(id){
     return n?' <span class="n">'+n+'</span>':'';
   }
   if(id==="cc") return ' <span class="n">'+ALL.filter(b=>stat(b).done).length+'/'+ALL.length+'</span>';
+  if(id==="town"){
+    const qs=(SAVE&&SAVE.quests)||[], have=invById();
+    const n=qs.filter(q=>q.done||(q.kind==="D"&&(have[q.item]||0)>=q.need)).length;
+    return n?' <span class="n">'+n+'</span>':'';
+  }
   return "";
 }
 
@@ -818,6 +842,65 @@ function renderNow(){
   if(rest) html+='<h3>Not yet</h3><p>'+rest+' more slot'+(rest===1?"":"s")+
     ' are out of season or have no deadline — see Still needed.</p>';
   return html+'</section>';
+}
+
+/* Quest deliveries accept ANY quality, so they join against the raw inventory —
+   not SAVE.owned, which is already collapsed to bundle slots and quality-filtered. */
+function invById(){
+  const m={};
+  (SAVE&&SAVE.inv||[]).forEach(r=>{
+    if(r.big||r.type!=="Object") return;   // id 20 is Leek AND Recycling Machine
+    m[r.id]=(m[r.id]||0)+r.s;
+  });
+  return m;
+}
+function questWhere(id){
+  const hits=(SAVE&&SAVE.inv||[]).filter(r=>r.id===id&&!r.big&&r.type==="Object");
+  if(!hits.length) return "";
+  return hits.map(r=>r.s+" in "+r.w).join(", ");
+}
+
+function renderQuests(){
+  if(!SAVE) return '<section class="plaque panel"><h2>Quests</h2>'+
+    '<p>Link your save to see your active quests.</p>'+
+    '<button data-act="importsave">Import a save</button></section>';
+  const qs=SAVE.quests;
+  if(!qs) return '<section class="plaque panel"><h2>Quests</h2>'+
+    '<p>This save was linked before quests were included. Tap <b>Refresh save</b>.</p>'+
+    '<button data-act="refresh">Refresh save</button></section>';
+  if(!qs.length) return '<section class="plaque panel"><h2>Quests</h2>'+
+    '<p>No active quests. Check the board outside Pierre\'s.</p></section>';
+
+  const have=invById();
+  const rank=q=>{
+    if(q.done) return 0;
+    if(q.kind==="D"&&(have[q.item]||0)>=q.need) return 1;
+    if(q.kind==="D") return 2;
+    return 3;
+  };
+  const rows=qs.slice().sort((a,b)=>rank(a)-rank(b));
+
+  return '<section class="plaque panel"><h2>Quests</h2>'+
+    '<p class="kv">'+qs.length+' active · '+esc(fmtDate(SAVE.date))+'</p>'+
+    rows.map(q=>{
+      const r=rank(q);
+      const cls=r===0?"urg-ready":r===1?"urg-ready":r===2?"urg-plant":"";
+      let line;
+      if(q.done) line="<b>Completed — go and hand it in"+(q.target?" to "+esc(q.target):"")+"</b>";
+      else if(q.kind==="D"){
+        const n=have[q.item]||0;
+        line=n>=q.need
+          ? "<b>You have "+n+" — deliver "+q.need+" to "+esc(q.target)+"</b> · "+esc(questWhere(q.item))
+          : "Need "+q.need+", you have "+n+(n?" · "+esc(questWhere(q.item)):"");
+      } else line=esc(q.objective||"");
+      return '<div class="need '+cls+'" style="border-left:4px solid '+
+        (r<=1?"#5d8c2f":r===2?"#c9a227":"#b09468")+'">'+
+        '<div class="t">'+esc(q.title)+
+          (q.gold?' <span class="m">'+q.gold+'g</span>':"")+'</div>'+
+        '<div class="items">'+esc(q.objective||"")+'</div>'+
+        '<div class="items"><i>'+line+'</i></div></div>';
+    }).join("")+
+    '</section>';
 }
 
 let invQ="";
@@ -1015,6 +1098,7 @@ function render(){
   const main=document.getElementById("main");
   if(tab==="now"){ main.innerHTML=renderNow(); renderStatus(); return; }
   if(tab==="inv"){ main.innerHTML=renderInv(); renderStatus(); return; }
+  if(tab==="quests"){ main.innerHTML=renderQuests(); renderStatus(); return; }
   if(tab==="import"){ main.innerHTML=renderImport(); renderStatus(); return; }
   if(tab==="storage"){ main.innerHTML=renderStorage(); renderStatus(); return; }
   if(tab==="needed"){ main.innerHTML=renderNeeded(); renderStatus(); return; }
