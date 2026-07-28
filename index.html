@@ -219,7 +219,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-28e";
+const BUILD="2026-07-28f";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -569,11 +569,13 @@ function parseSave(text){
   const quests=parseQuests(text);
   const social=parseSocial(text);
   const col=parseCol(text);
+  const machines=parseMachines(text);
+  const animals=parseAnimals(text);
 
   return {v:1,at:Date.now(),src:"file",
           date:{season:season,day:+day,year:+year},
           money:+(scalar(text,"money")||0), farm:scalar(text,"farmName")||"",
-          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,quests,social,col,
+          donated,donatedBundles,untracked,areaMismatch,areas:areaFlags,owned,inv,quests,social,col,machines,animals,
           ownedCount:Object.keys(owned).length,
           verify:verifyIds(byName)};
 }
@@ -603,7 +605,7 @@ async function refreshFromUrl(){
    construction sites but not the persist list is the classic "works after
    Refresh, empty after relaunch" bug — so both are driven from this list. */
 const SAVE_FIELDS=["date","money","farm","donatedBundles","verified","areas",
-                   "owned","inv","quests","orders","col","social"];
+                   "owned","inv","quests","orders","col","social","machines","animals"];
 
 function adoptSave(r,src){
   const s={v:1,at:r.at||Date.now(),src:src||r.src||"file",
@@ -738,7 +740,10 @@ const chip=(attr,val,label,cur,extra)=>
 
 function modeBadge(id){
   if(id==="today"){
-    const n=SAVE?allUrgencies().filter(u=>u.tag==="ready"||u.tag==="plant"||u.tag==="leaving").length:0;
+    if(!SAVE) return "";
+    let n=allUrgencies().filter(u=>u.tag==="ready"||u.tag==="plant"||u.tag==="leaving").length;
+    if(SAVE.machines) n+=SAVE.machines.length;
+    if(SAVE.animals)  n+=SAVE.animals.filter(a=>!a.petted||a.produce).length;
     return n?' <span class="n">'+n+'</span>':'';
   }
   if(id==="cc") return ' <span class="n">'+ALL.filter(b=>stat(b).done).length+'/'+ALL.length+'</span>';
@@ -821,6 +826,80 @@ const TAGS={
 };
 const TAGORDER=["ready","plant","leaving","tree","partial","late","gone","wait","grow","any"];
 
+function parseMachines(text){
+  const rows=attrRows(text,"machines","m");
+  return rows?rows.map(r=>({machine:r.n,held:r.h||""})):null;
+}
+function parseAnimals(text){
+  const rows=attrRows(text,"animals","a");
+  return rows?rows.map(r=>({name:r.n,type:r.ty,building:r.b,
+    friend:+r.f||0,happy:+r.h||0,full:+r.fu||0,
+    produce:r.p||"",petted:r.pet==="1"})):null;
+}
+
+/* The chores half of Today: things that reset daily and are easy to forget. */
+function choresHtml(){
+  let html="";
+  const mach=SAVE.machines, ani=SAVE.animals;
+
+  if(mach&&mach.length){
+    const byMachine={};
+    mach.forEach(m=>{ (byMachine[m.machine]=byMachine[m.machine]||[]).push(m.held); });
+    html+='<h3>Ready to collect ('+mach.length+')</h3>';
+    html+=Object.keys(byMachine).sort().map(k=>{
+      const items=byMachine[k].filter(Boolean);
+      const uniq=[...new Set(items)];
+      return '<div class="need urg-ready" style="border-left:4px solid #5d8c2f">'+
+        '<div class="t">'+esc(k)+' <span class="m">×'+byMachine[k].length+'</span></div>'+
+        (uniq.length?'<div class="items"><i>'+esc(uniq.join(", "))+'</i></div>':"")+
+        '</div>';
+    }).join("");
+  }
+
+  if(ani&&ani.length){
+    const unpetted=ani.filter(a=>!a.petted);
+    const withProduce=ani.filter(a=>a.produce);
+    const hungry=ani.filter(a=>a.full===0);
+    html+='<h3>Animals ('+ani.length+')</h3>';
+    if(unpetted.length)
+      html+='<div class="need urg-plant" style="border-left:4px solid #c9a227">'+
+        '<div class="t">'+unpetted.length+' not petted today</div>'+
+        '<div class="items"><i>'+esc(unpetted.map(a=>a.name).join(", "))+'</i></div></div>';
+    if(withProduce.length)
+      html+='<div class="need urg-ready" style="border-left:4px solid #5d8c2f">'+
+        '<div class="t">'+withProduce.length+' with produce waiting</div>'+
+        '<div class="items"><i>'+esc(withProduce.map(a=>
+          a.name+" — "+itemName(a.produce)).join(", "))+'</i></div></div>';
+    if(hungry.length)
+      html+='<div class="need urg-leaving" style="border-left:4px solid #c4552e">'+
+        '<div class="t">'+hungry.length+' unfed</div>'+
+        '<div class="items"><i>'+esc(hungry.map(a=>a.name).join(", "))+
+        '</i> · no grass in winter, so they need hay in the trough</div></div>';
+    if(!unpetted.length&&!withProduce.length&&!hungry.length)
+      html+='<p>All petted, fed, and nothing waiting.</p>';
+  }
+
+  // Birthdays and turn-in-ready quests belong on Today too.
+  if(SAVE.social){
+    const bd=SAVE.social.filter(p=>BDAY[p.name]&&untilBday(BDAY[p.name])<=1);
+    if(bd.length) html+='<h3>Birthdays</h3>'+bd.map(p=>
+      '<div class="need urg-ready" style="border-left:4px solid #5d8c2f">'+
+      '<div class="t">'+esc(p.name)+'</div><div class="items"><i>'+
+      (untilBday(BDAY[p.name])===0?"Birthday today":"Birthday tomorrow")+
+      (p.talked?"":" · not spoken to yet")+'</i></div></div>').join("");
+  }
+  if(SAVE.quests){
+    const have=invById();
+    const ready=SAVE.quests.filter(q=>q.done||(q.kind==="D"&&(have[q.item]||0)>=q.need));
+    if(ready.length) html+='<h3>Quests ready</h3>'+ready.map(q=>
+      '<div class="need urg-ready" style="border-left:4px solid #5d8c2f">'+
+      '<div class="t">'+esc(q.title)+'</div><div class="items"><i>'+
+      (q.done?"Completed — hand it in"+(q.target?" to "+esc(q.target):"")
+             :"You have what "+esc(q.target)+" needs")+'</i></div></div>').join("");
+  }
+  return html;
+}
+
 function renderNow(){
   if(!SAVE) return '<section class="plaque panel"><h2>Right now</h2>'+
     '<p>Link your save and this becomes a live to-do list: what you already own, '+
@@ -833,7 +912,7 @@ function renderNow(){
 
   let html='<section class="plaque panel"><h2>Right now</h2>'+
     '<p class="kv">'+esc(fmtDate(d))+' · <b style="min-width:0">'+left+' day'+(left===1?"":"s")+
-    ' left in '+esc(d.season)+'</b></p>';
+    ' left in '+esc(d.season)+'</b></p>'+choresHtml();
 
   let shown=0;
   TAGORDER.forEach(tag=>{
