@@ -219,7 +219,7 @@ const ROOMS=[
  {id:"v4",name:"25,000g",need:1,items:[{n:"25,000g",gold:25000}]}]}
 ];
 
-const BUILD="2026-07-28f";
+const BUILD="2026-07-28g";
 
 const ALL=ROOMS.flatMap(r=>r.bundles.map(b=>({...b,roomId:r.id,roomName:r.name,color:r.color})));
 const K=(b,i)=>b+"#"+i;
@@ -886,7 +886,7 @@ function choresHtml(){
       '<div class="need urg-ready" style="border-left:4px solid #5d8c2f">'+
       '<div class="t">'+esc(p.name)+'</div><div class="items"><i>'+
       (untilBday(BDAY[p.name])===0?"Birthday today":"Birthday tomorrow")+
-      (p.talked?"":" · not spoken to yet")+'</i></div></div>').join("");
+      (p.talked?"":" · not spoken to yet")+'</i></div>'+giftLine(p.name)+'</div>').join("");
   }
   if(SAVE.quests){
     const have=invById();
@@ -942,6 +942,14 @@ const COLIDS={min:COL.min.split(' '),arch:COL.arch.split(' ')};
 COLIDS.mus=COLIDS.min.concat(COLIDS.arch);
 // 1.6 string ids (SummerSquash) have no numeric entry - humanise instead.
 const itemName=id=>ITEMS[id]||String(id).replace(/([a-z])([A-Z])/g,'$1 $2');
+
+/* Gift tastes from stardew.wiki per-villager pages, resolved to item ids.
+   Only specific loved/hated items - the wiki's broad rules ("most fish")
+   are category rules that can't be matched per-item, so they are omitted. */
+const LOVES={Abigail:"66 904 611 220 128 276 226",Alex:"201 211 206 212",Caroline:"614 496 907",Clint:"66 62 60 336 70 64 68",Demetrius:"72 243 575 226 400",Elliott:"732 444 649 715 637 814 218",Emily:"66 428 60 70 221 241",Evelyn:"595 221 239 591",George:"225 200 201",Gus:"72 729 213 635 907",Haley:"88 610 221 421",Harvey:"336 337 200 348",Jas:"595 221 402",Jodi:"220 72 225 211 222 200",Krobus:"72 337 276 305 16",Leah:"196 200 430 348 651",Lewis:"225 260 200",Linus:"88 90 280 258",Marnie:"72 240 221 608",Maru:"72 336 337 243 215",Pam:"346 90 208 459 303 24 199",Penny:"230 218 651 72",Pierre:"202",Robin:"426 636 224",Sam:"206 212 724 346",Sandy:"418 18 905 402",Sebastian:"84 575 276 155 220",Shane:"346 260 342 206 225",Vincent:"220 213 398 221 192",Willy:"143 72 337 459 149 276 154 698",Wizard:"279 422 155"};
+const HATES={Abigail:"296 16",Alex:"154 213",Caroline:"154",Clint:"330 296 16",Demetrius:"80 212",Elliott:"330 213",Emily:"342 212",Evelyn:"228 154",Gus:"296 330",Haley:"228 154",Harvey:"228 219",Jas:"228 219",Jodi:"212 154",Krobus:"296 18",Leah:"213",Lewis:"154 228",Linus:"228 212",Marnie:"330 296 16",Maru:"228 154",Pam:"228 128",Penny:"228 330",Pierre:"296",Sam:"330 154",Sandy:"330 296 396",Sebastian:"213 304 16",Shane:"330 228",Vincent:"154 228",Willy:"330 296 16",Wizard:"228 154"};
+const lovedBy=n=>(LOVES[n]||'').split(' ').filter(Boolean);
+const hatedBy=n=>(HATES[n]||'').split(' ').filter(Boolean);
 
 /* Birthdays are static content data, extracted once from the save's NPC records.
    Encoded as seasonIndex + 2-digit day — note spring/summer share a first letter,
@@ -1061,6 +1069,23 @@ function peopleRows(){
     .sort((a,b)=>a.until-b.until||b.pts-a.pts);
 }
 
+/* Loved gifts, with anything you're actually carrying surfaced first. */
+function giftLine(who){
+  const loves=lovedBy(who); if(!loves.length) return "";
+  const have=invById();
+  const owned=loves.filter(id=>have[id]);
+  const rest=loves.filter(id=>!have[id]);
+  let s="";
+  if(owned.length) s+='<div class="items"><b>You have: '+
+    esc(owned.map(id=>itemName(id)+" ×"+have[id]).join(", "))+'</b></div>';
+  if(rest.length) s+='<div class="items"><i>Also loves: '+
+    esc(rest.map(itemName).join(", "))+'</i></div>';
+  const hates=hatedBy(who);
+  if(hates.length) s+='<div class="items"><i>Never give: '+
+    esc(hates.map(itemName).join(", "))+'</i></div>';
+  return s;
+}
+
 function renderPeople(){
   if(!SAVE) return '<section class="plaque panel"><h2>Villagers</h2>'+
     '<p>Link your save to see hearts, gift slots and birthdays.</p>'+
@@ -1096,7 +1121,7 @@ function peopleListHtml(rows){
       '<div class="items"><i>'+bd+(bd?" · ":"")+
         (p.talked?"talked today":"<b>not talked to today</b>")+" · "+
         (slots>0?slots+" gift slot"+(slots===1?"":"s")+" left this week":"no gifts left this week")+
-      '</i></div></div>';
+      '</i></div>'+giftLine(p.name)+'</div>';
   }).join("");
 }
 
